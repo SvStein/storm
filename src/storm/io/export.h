@@ -61,16 +61,16 @@ template<typename Container>
 inline void outputFixedWidth(std::ostream& stream, Container const& output, size_t maxWidth = 30) {
     size_t curLength = 0;
     for (auto s : output) {
+        if (maxWidth > 0 && curLength >= maxWidth) {
+            stream << '\n';
+            curLength = 0;
+        }
         if (curLength > 0) {
             stream << ", ";
             curLength += 2;
         }
         stream << s;
         curLength += s.length();
-        if (maxWidth > 0 && curLength >= maxWidth) {
-            stream << '\n';
-            curLength = 0;
-        }
     }
 }
 }  // namespace utility

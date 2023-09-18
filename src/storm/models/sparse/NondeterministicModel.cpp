@@ -154,7 +154,7 @@ void NondeterministicModel<ValueType, RewardModelType>::writeDotToStream(std::os
             }
 
             if (arrowHasLabel || scheduler != nullptr) {
-                outStream << "]\n";
+                outStream << "]";
             }
             outStream << ";\n";
 
