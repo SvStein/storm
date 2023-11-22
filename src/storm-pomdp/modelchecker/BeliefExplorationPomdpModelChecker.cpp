@@ -323,6 +323,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         overApproxBeliefManager = std::make_shared<BeliefManagerType>(
             pomdp(), storm::utility::convertNumber<BeliefValueType>(options.numericPrecision),
             options.dynamicTriangulation ? BeliefManagerType::TriangulationMode::Dynamic : BeliefManagerType::TriangulationMode::Static);
+        result.beliefManagerOver = overApproxBeliefManager;
         if (rewardModelName) {
             overApproxBeliefManager->setRewardModel(rewardModelName);
         }
@@ -344,6 +345,9 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         }
         ValueType const& newValue = overApproximation->getComputedValueAtInitialState();
         bool betterBound = min ? result.updateLowerBound(newValue) : result.updateUpperBound(newValue);
+        result.beliefMdpOver = overApproximation->getExploredMdp();
+        result.beliefIdToMdpStateMapOver = overApproximation->getBeliefIdToMdpStateMap();
+        result.mdpStateToBeliefIdMapOver = overApproximation->getMdpStateToBeliefIdMap();
         if (betterBound) {
             STORM_LOG_INFO("Initial Over-approx result obtained after " << statistics.totalTime << ". Value is '" << newValue << "'.\n");
         }
@@ -356,6 +360,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         underApproxBeliefManager = std::make_shared<BeliefManagerType>(
             pomdp(), storm::utility::convertNumber<BeliefValueType>(options.numericPrecision),
             options.dynamicTriangulation ? BeliefManagerType::TriangulationMode::Dynamic : BeliefManagerType::TriangulationMode::Static);
+        result.beliefManagerUnder = underApproxBeliefManager;
         if (rewardModelName) {
             underApproxBeliefManager->setRewardModel(rewardModelName);
         }
@@ -391,6 +396,9 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         }
         ValueType const& newValue = underApproximation->getComputedValueAtInitialState();
         bool betterBound = min ? result.updateUpperBound(newValue) : result.updateLowerBound(newValue);
+        result.beliefMdpUnder = underApproximation->getExploredMdp();
+        result.beliefIdToMdpStateMapUnder = underApproximation->getBeliefIdToMdpStateMap();
+        result.mdpStateToBeliefIdMapUnder = underApproximation->getMdpStateToBeliefIdMap();
         if (betterBound) {
             STORM_LOG_INFO("Initial Under-approx result obtained after " << statistics.totalTime << ". Value is '" << newValue << "'.\n");
         }

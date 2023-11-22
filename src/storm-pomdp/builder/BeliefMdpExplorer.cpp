@@ -1449,6 +1449,16 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::exportBeliefMdpToDot(std::st
     storm::utility::closeFile(stream);
 }
 
+template<typename PomdpType, typename BeliefValueType>
+std::vector<typename BeliefMdpExplorer<PomdpType, BeliefValueType>::BeliefId> BeliefMdpExplorer<PomdpType, BeliefValueType>::getMdpStateToBeliefIdMap() {
+    return mdpStateToBeliefIdMap;
+}
+
+template<typename PomdpType, typename BeliefValueType>
+std::map<typename BeliefMdpExplorer<PomdpType, BeliefValueType>::BeliefId, typename BeliefMdpExplorer<PomdpType, BeliefValueType>::MdpStateType> BeliefMdpExplorer<PomdpType, BeliefValueType>::getBeliefIdToMdpStateMap() {
+    return beliefIdToMdpStateMap;
+}
+
 template class BeliefMdpExplorer<storm::models::sparse::Pomdp<double>>;
 
 template class BeliefMdpExplorer<storm::models::sparse::Pomdp<double>, storm::RationalNumber>;

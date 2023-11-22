@@ -49,6 +49,8 @@ class Mdp : public NondeterministicModel<ValueType, RewardModelType> {
     Mdp& operator=(Mdp<ValueType, RewardModelType>&& other) = default;
 
     virtual ~Mdp() = default;
+
+    void exportGEFXToStream(std::ostream& outStream, std::vector<std::vector<uint64_t>> colors);
 };
 
 }  // namespace sparse

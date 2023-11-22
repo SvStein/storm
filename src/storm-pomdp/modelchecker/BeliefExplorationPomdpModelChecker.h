@@ -80,6 +80,14 @@ class BeliefExplorationPomdpModelChecker {
         bool updateUpperBound(ValueType const& value);
         std::shared_ptr<storm::models::sparse::Model<ValueType>> schedulerAsMarkovChain;
         std::vector<storm::storage::Scheduler<ValueType>> cutoffSchedulers;
+        std::shared_ptr<storm::models::sparse::Mdp<ValueType>> beliefMdpOver;
+        std::shared_ptr<storm::models::sparse::Mdp<ValueType>> beliefMdpUnder;
+        std::map<typename storm::storage::BeliefManager<PomdpModelType, BeliefValueType>::BeliefId, uint64_t> beliefIdToMdpStateMapOver;
+        std::vector<typename storm::storage::BeliefManager<PomdpModelType, BeliefValueType>::BeliefId> mdpStateToBeliefIdMapOver;
+        std::shared_ptr<storm::storage::BeliefManager<PomdpModelType, BeliefValueType>> beliefManagerOver;
+        std::map<typename storm::storage::BeliefManager<PomdpModelType, BeliefValueType>::BeliefId, uint64_t> beliefIdToMdpStateMapUnder;
+        std::vector<typename storm::storage::BeliefManager<PomdpModelType, BeliefValueType>::BeliefId> mdpStateToBeliefIdMapUnder;
+        std::shared_ptr<storm::storage::BeliefManager<PomdpModelType, BeliefValueType>> beliefManagerUnder;
     };
 
     /* Functions */

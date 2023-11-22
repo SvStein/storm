@@ -250,6 +250,203 @@ void performQualitativeAnalysis(std::shared_ptr<storm::models::sparse::Pomdp<Val
 }
 
 template<typename ValueType, storm::dd::DdType DdType, typename BeliefType>
+std::pair<bool, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result> performSpecialAnalysis(
+        const shared_ptr<storm::models::sparse::Pomdp<ValueType>> &pomdp, const analysis::FormulaInformation &formulaInfo,
+        const logic::Formula &formula) {
+    // need this bc the regular analysis does not return the result. using only the belief exploring part here bc that is what im here for
+    auto const& pomdpSettings = storm::settings::getModule<storm::settings::modules::POMDPSettings>();
+    bool analysisPerformed = false;
+    STORM_PRINT_AND_LOG("Exploring the belief MDP... \n");
+    auto options = storm::pomdp::modelchecker::BeliefExplorationPomdpModelCheckerOptions<ValueType>(pomdpSettings.isBeliefExplorationDiscretizeSet(),
+                                                                                                    pomdpSettings.isBeliefExplorationUnfoldSet());
+    auto const& beliefExplorationSettings = storm::settings::getModule<storm::settings::modules::BeliefExplorationSettings>();
+    beliefExplorationSettings.setValuesInOptionsStruct(options);
+    storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType> checker(pomdp, options);
+    auto result = checker.check(formula);
+    checker.printStatisticsToStream(std::cout);
+    if (storm::utility::resources::isTerminate()) {
+        STORM_PRINT_AND_LOG("\nResult till abort: ")
+    } else {
+        STORM_PRINT_AND_LOG("\nResult: ")
+    }
+    printResult(result.lowerBound, result.upperBound);
+    STORM_PRINT_AND_LOG('\n');
+    analysisPerformed = true;
+    return std::make_pair(analysisPerformed, result);
+}
+
+void determineOgColors(std::vector<std::vector<uint64_t>> &stateColors) {
+    // gives the og beliefMDP graph a coloring
+    // with colors evenly spaced on the full-saturation-full-brightness rgb spectrum
+    // (i.e. one value is always 255, one value 0, and the third is in [0,255]
+    // depending on how many colors will be needed, possibly add saturation / brightness variation too
+
+    // we have six intervals when circling the above-mentioned spectrum
+    // we save here where each of the rgb values is UP at 255 (u), DOWN at 0 (d), FALLING (f) or rising (r)
+    // I've thought long and hard about how to do this elegantly, but I could not come up with anything much better than this
+    auto colorBehaviorOnInterval = std::vector<std::vector<char>>(6);
+    colorBehaviorOnInterval[0] = {'u', 'd', 'r'};
+    colorBehaviorOnInterval[1] = {'f', 'd', 'u'};
+    colorBehaviorOnInterval[2] = {'d', 'r', 'u'};
+    colorBehaviorOnInterval[3] = {'d', 'u', 'f'};
+    colorBehaviorOnInterval[4] = {'r', 'u', 'd'};
+    colorBehaviorOnInterval[5] = {'u', 'f', 'd'};
+
+    auto numberOfColors = stateColors.size();
+    uint64_t colorDistance = 1530 / numberOfColors;
+    for (auto i = 0; i < numberOfColors; i++) {
+        uint64_t value = i * colorDistance; // translate each color to a value within our spectrum of 1530 colors
+        uint64_t intervalIndex = value / 255; // determine the values interval of the spectrum
+        uint64_t offset = value - intervalIndex * 255; // determine offset within the interval
+        for (auto rgbIndex = 0; rgbIndex < 3; rgbIndex++) { // determine value for r, g, and b values with help of vector above
+            switch (colorBehaviorOnInterval[intervalIndex][rgbIndex]) {
+                case 'u':
+                    stateColors[i][rgbIndex] = 255;
+                    break;
+                case 'd':
+                    stateColors[i][rgbIndex] = 0;
+                    break;
+                case 'r':
+                    stateColors[i][rgbIndex] = offset;
+                    break;
+                case 'f':
+                    stateColors[i][rgbIndex] = 255-offset;
+                    break;
+            }
+        }
+    }
+}
+
+template<typename ValueType, storm::dd::DdType DdType, typename BeliefType> // TODO idk is this the right thing to put here?
+void determineUnfColors(std::vector<std::vector<uint64_t>> &ogStateColors, std::vector<std::vector<uint64_t>> &unfStateColors, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo,  bool underApprox) {
+    // this is one possible implementation of deciding when to color an unfolded state the same as a non-unfolded state, others may be added / implemented as well
+    // here: unfBelief ~= ogBelief iff for all s in supp(ogBelief): ogBelief(s) = unfBelief(s)
+    // where unfBelief(s) = sum_{(s,e) in supp(unfBelief)} unfBelief((s,e))
+
+    for (auto rgbIndex = 0; rgbIndex < 3; rgbIndex++){
+        unfStateColors[0][rgbIndex] = ogStateColors[0][rgbIndex];
+        unfStateColors[1][rgbIndex] = ogStateColors[1][rgbIndex];
+    }
+
+    // for each unfBelief / state in the unfBeliefMdp
+    for (auto unfBMDPState = 2; unfBMDPState < unfStateColors.size(); unfBMDPState++) {
+        // set up distribution over the og states
+        auto unfBeliefOgStateDistribution = boost::container::flat_map<uint64_t , BeliefType>(); // TODO is BeliefType here what BeliefValueType is in BeliefManager?
+        // grab distribution over the unf states
+        boost::container::flat_map<uint64_t , BeliefType> unfBeliefUnfStateDistribution = (underApprox ? unfCheckingResult.beliefManagerUnder->getBelief(unfCheckingResult.mdpStateToBeliefIdMapUnder[unfBMDPState]) : unfCheckingResult.beliefManagerOver->getBelief(unfCheckingResult.mdpStateToBeliefIdMapOver[unfBMDPState])); // TODO getBelief is private, how to resolve?
+        // for each (unfState,prob) in the support of the unfBelief
+        for (auto it = unfBeliefUnfStateDistribution.begin(); it != unfBeliefUnfStateDistribution.end(); it++) {
+            // find out what og state the unfState refers to if we ignore its epoch
+            uint64_t ogState = unfoldingInfo.newStateToStateEpoch[it->first].first;
+            // sort it into the belief distribution over og states
+            if (unfBeliefOgStateDistribution.find(ogState) == unfBeliefOgStateDistribution.end()) {
+                unfBeliefOgStateDistribution[ogState] = it->second;
+            } else {
+                unfBeliefOgStateDistribution[ogState] += it->second;
+            }
+        }
+
+        // we now have computed the unfolded belief's distribution over the og states
+        // now we need to see if it matches any of the og beliefs' distributions over the og states
+
+        bool found = false;
+        // for each og BMDP state
+        for (auto ogBMDPState = 2; ogBMDPState < ogStateColors.size(); ogBMDPState++){
+            // grab belief distribution
+            boost::container::flat_map<uint64_t , BeliefType> ogBeliefOgStateDistribution = (underApprox ? ogCheckingResult.beliefManagerUnder->getBelief(ogCheckingResult.mdpStateToBeliefIdMapUnder[ogBMDPState]) : ogCheckingResult.beliefManagerOver->getBelief(ogCheckingResult.mdpStateToBeliefIdMapOver[ogBMDPState])); // TODO getBelief is private, how to resolve?
+            // quick check to maybe avoid having to compare the maps in detail, no clue if that helps or just creates more overhead
+            if (ogBeliefOgStateDistribution.size() != unfBeliefOgStateDistribution.size()) {
+                continue;
+            }
+            bool match = true;
+            // for each (ogState, ogProb)
+            for (auto it = ogBeliefOgStateDistribution.begin(); it != ogBeliefOgStateDistribution.end(); it++){
+                // if the unfBelief does not have the state in its support or maps it to a different probability, the two beliefs dont match
+                // TODO handle potential floating point inaccuracies?
+                if (unfBeliefOgStateDistribution.find(it->first) == unfBeliefOgStateDistribution.end() || unfBeliefOgStateDistribution[it->first] != it->second) {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (!match) {
+                // if they don't match, skip to next og BMDPstate
+                continue;
+            } else {
+                // if they do match, set same color and break loop (i am assuming that no two BMDP states have the exact same belief here) // TODO floating point inaccuracies?
+                found = true;
+                for (auto rgbIndex = 0; rgbIndex < 3; rgbIndex++){
+                    unfStateColors[unfBMDPState][rgbIndex] = ogStateColors[ogBMDPState][rgbIndex];
+                }
+                break;
+            }
+        }
+        if (!found) {
+            // if it does not match any og BMDP, set color to white
+            for (auto rgbIndex = 0; rgbIndex < 3; rgbIndex++){
+                unfStateColors[unfBMDPState][rgbIndex] = 255;
+            }
+        }
+    }
+}
+
+template<typename ValueType, storm::dd::DdType DdType, typename BeliefType> // TODO idk is this the right thing to put here?
+void createGEFXOutputs(typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo) {
+    // TODO for now, this assumes both under and overapproximation have been applied
+    // underapprox part
+    uint64_t ogUnderStateNumber = ogCheckingResult.beliefMdpUnder->getNumberOfStates();
+    std::vector<std::vector<uint64_t>> ogUnderColors = std::vector<std::vector<uint64_t>>();
+    ogUnderColors.reserve(ogUnderStateNumber);
+    for (auto i = 0; i < ogUnderStateNumber; i++){
+        ogUnderColors.push_back(std::vector<uint64_t>(3));
+    }
+    uint64_t unfUnderStateNumber = unfCheckingResult.beliefMdpUnder->getNumberOfStates();
+    auto unfUnderColors = std::vector<std::vector<uint64_t>>();
+    unfUnderColors.reserve(unfUnderStateNumber);
+    for (auto i = 0; i < unfUnderStateNumber; i++){
+        unfUnderColors.push_back(std::vector<uint64_t>(3));
+    }
+
+    determineOgColors(ogUnderColors);
+    determineUnfColors<ValueType, DdType, BeliefType>(ogUnderColors, unfUnderColors, ogCheckingResult, unfCheckingResult, unfoldingInfo, true);
+
+    std::ofstream stream;
+    storm::utility::openFile("ogUnder.gexf", stream);
+    ogCheckingResult.beliefMdpUnder->exportGEFXToStream(stream, ogUnderColors);
+    storm::utility::closeFile(stream);
+    stream.clear();
+    storm::utility::openFile("unfUnder.gexf", stream);
+    unfCheckingResult.beliefMdpUnder->exportGEFXToStream(stream, unfUnderColors);
+    storm::utility::closeFile(stream);
+    stream.clear();
+
+    // Overapprox part
+    uint64_t ogOverStateNumber = ogCheckingResult.beliefMdpOver->getNumberOfStates();
+    std::vector<std::vector<uint64_t>> ogOverColors = std::vector<std::vector<uint64_t>>();
+    ogOverColors.reserve(ogOverStateNumber);
+    for (auto i = 0; i < ogOverStateNumber; i++){
+        ogOverColors.push_back(std::vector<uint64_t>(3));
+    }
+    uint64_t unfOverStateNumber = unfCheckingResult.beliefMdpOver->getNumberOfStates();
+    auto unfOverColors = std::vector<std::vector<uint64_t>>();
+    unfOverColors.reserve(unfOverStateNumber);
+    for (auto i = 0; i < unfOverStateNumber; i++){
+        unfOverColors.push_back(std::vector<uint64_t>(3));
+    }
+
+    determineOgColors(ogOverColors);
+    determineUnfColors<ValueType, DdType, BeliefType>(ogOverColors, unfOverColors, ogCheckingResult, unfCheckingResult, unfoldingInfo, false);
+
+    storm::utility::openFile("ogOver.gexf", stream);
+    ogCheckingResult.beliefMdpOver->exportGEFXToStream(stream, ogOverColors);
+    storm::utility::closeFile(stream);
+    stream.clear();
+    storm::utility::openFile("unfOver.gexf", stream);
+    unfCheckingResult.beliefMdpOver->exportGEFXToStream(stream, unfOverColors);
+    storm::utility::closeFile(stream);
+}
+
+template<typename ValueType, storm::dd::DdType DdType, typename BeliefType>
 bool performAnalysis(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> const& pomdp, storm::pomdp::analysis::FormulaInformation const& formulaInfo,
                      storm::logic::Formula const& formula) {
     auto const& pomdpSettings = storm::settings::getModule<storm::settings::modules::POMDPSettings>();
@@ -417,7 +614,9 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
         std::cout << uniqueAnalysis.analyse() << '\n';
     }
 
-    if (formula) {
+    // TODO set/unset flag to create gefx comparison outputs here
+    bool compareBMDPs = true;
+    if (formula && !compareBMDPs) {
         if (formula->asOperatorFormula().getSubformula().isBoundedUntilFormula()) {
             auto unfolder = storm::transformer::BoundUnfolder<ValueType>();
             auto unfoldedStuff = unfolder.unfold(pomdp, *formula.get());
@@ -447,6 +646,77 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
             sw.stop();
             STORM_PRINT_AND_LOG("Time for POMDP analysis: " << sw << "s.\n");
         }
+    } else if (formula && compareBMDPs){
+        STORM_LOG_ASSERT(formula->asOperatorFormula().getSubformula().isBoundedUntilFormula(), "Not bounded Until formula");
+        auto unfolder = storm::transformer::BoundUnfolder<ValueType>();
+        auto unfoldedStuff = unfolder.unfold(pomdp, *formula.get());
+        auto unfpomdp = unfoldedStuff.pomdp;
+        shared_ptr<const logic::Formula> unfformula = std::make_shared<storm::logic::ProbabilityOperatorFormula const>(unfoldedStuff.formula);
+        // drop reward bound from formula ((currently assumes Pmin/max = ? operator bounded until formula))
+        std::string droppedBoundString = "";
+        STORM_LOG_ASSERT(formula->isProbabilityOperatorFormula(), "Dropping of Reward bounds currently only implemented for ProbabilityOperator Formulas");
+
+        if (formula->asProbabilityOperatorFormula().getOptimalityType() == storm::solver::OptimizationDirection::Maximize){
+            droppedBoundString += "Pmax=? ";
+        } else {
+            droppedBoundString += "Pmin=? ";
+        }
+        droppedBoundString += "[" + formula->asOperatorFormula().getSubformula().asBoundedUntilFormula().getLeftSubformula().toString() + " U " + formula->asOperatorFormula().getSubformula().asBoundedUntilFormula().getRightSubformula().toString() + "]";
+        std::vector<storm::jani::Property> propertyVector = storm::api::parseProperties(droppedBoundString);
+        storm::logic::ProbabilityOperatorFormula newFormula = storm::api::extractFormulasFromProperties(propertyVector).front()->asProbabilityOperatorFormula();
+        formula = std::make_shared<storm::logic::ProbabilityOperatorFormula const>(newFormula);
+
+        std::cout << std::endl << formula->toString() << std::endl;
+
+        auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*pomdp, *formula);
+        STORM_LOG_THROW(!formulaInfo.isUnsupported(), storm::exceptions::InvalidPropertyException,
+                        "The formula '" << *formula << "' is not supported by storm-pomdp.");
+        auto unfformulaInfo = storm::pomdp::analysis::getFormulaInformation(*pomdp, *unfformula);
+        STORM_LOG_THROW(!unfformulaInfo.isUnsupported(), storm::exceptions::InvalidPropertyException,
+                        "The formula '" << *unfformula << "' is not supported by storm-pomdp.");
+
+        // TODO run both here
+        storm::utility::Stopwatch sw(true);
+        // Note that formulaInfo contains state-based information which potentially needs to be updated during preprocessing
+        if (performPreprocessing<ValueType, DdType>(pomdp, formulaInfo, *formula)) {
+            sw.stop();
+            STORM_PRINT_AND_LOG("Time for graph-based POMDP (pre-)processing: " << sw << ".\n");
+            pomdp->printModelInformationToStream(std::cout);
+        }
+
+        sw.restart();
+        if (performTransformation<ValueType, DdType>(pomdp, *formula)) {
+            sw.stop();
+            STORM_PRINT_AND_LOG("Time for POMDP transformation(s): " << sw << "s.\n");
+        }
+
+        sw.restart();
+        auto performedResult = performSpecialAnalysis<ValueType, DdType, ValueType>(pomdp, formulaInfo, *formula);
+        if (performedResult.first) {
+            sw.stop();
+            STORM_PRINT_AND_LOG("Time for POMDP analysis: " << sw << "s.\n") ;
+        }
+
+        if (performPreprocessing<ValueType, DdType>(unfpomdp, unfformulaInfo, *unfformula)) {
+            sw.stop();
+            STORM_PRINT_AND_LOG("Time for graph-based POMDP (pre-)processing: " << sw << ".\n");
+            pomdp->printModelInformationToStream(std::cout);
+        }
+
+        sw.restart();
+        if (performTransformation<ValueType, DdType>(unfpomdp, *unfformula)) {
+            sw.stop();
+            STORM_PRINT_AND_LOG("Time for POMDP transformation(s): " << sw << "s.\n");
+        }
+
+        auto unfperformedResult = performSpecialAnalysis<ValueType, DdType, ValueType>(unfpomdp, unfformulaInfo, *unfformula);
+        sw.restart();
+        if (unfperformedResult.first) {
+            sw.stop();
+            STORM_PRINT_AND_LOG("Time for POMDP analysis: " << sw << "s.\n");
+        }
+
+        createGEFXOutputs<ValueType, DdType, ValueType>(performedResult.second, unfperformedResult.second, unfoldedStuff);
     } else {
         STORM_LOG_WARN("Nothing to be done. Did you forget to specify a formula?");
     }

@@ -101,6 +101,9 @@ class BeliefManager {
 
     std::vector<BeliefValueType> computeMatrixBeliefProduct(BeliefId const &beliefId, storm::storage::SparseMatrix<BeliefValueType> &matrix);
 
+    // TODO temporarily made public
+    BeliefType const &getBelief(BeliefId const &id) const;
+
    private:
     std::vector<BeliefValueType> getBeliefAsVector(BeliefId const &beliefId);
 
@@ -126,8 +129,6 @@ class BeliefManager {
         BeliefValueType diff;  // d[i]
         bool operator>(FreudenthalDiff const &other) const;
     };
-
-    BeliefType const &getBelief(BeliefId const &id) const;
 
     BeliefId getId(BeliefType const &belief) const;
 

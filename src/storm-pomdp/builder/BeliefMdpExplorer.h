@@ -261,7 +261,11 @@ class BeliefMdpExplorer {
 
     void setExportDotFileName(std::string fileName);
 
-   private:
+    std::vector<BeliefId> getMdpStateToBeliefIdMap();
+
+    std::map<BeliefId, MdpStateType> getBeliefIdToMdpStateMap();
+
+private:
     MdpStateType noState() const;
 
     std::shared_ptr<storm::logic::Formula const> createStandardProperty(storm::solver::OptimizationDirection const &dir, bool computeRewards);
