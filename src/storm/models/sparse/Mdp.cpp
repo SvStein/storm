@@ -43,6 +43,11 @@ Mdp<ValueType, RewardModelType>::Mdp(storm::storage::sparse::ModelComponents<Val
 }
 
 template<class ValueType, typename RewardModelType>
+uint64_t Mdp<ValueType, RewardModelType>::encodeColor(uint64_t r, uint64_t g, uint64_t b) {
+    return (r*1000000 + g*1000 + b);
+}
+
+template<class ValueType, typename RewardModelType>
 void Mdp<ValueType, RewardModelType>::exportGEFXToStream(std::ostream &outStream,
                                                          std::vector<std::vector<uint64_t>> colors) {
     STORM_LOG_ASSERT(this->getNumberOfStates() == colors.size(), "The color vector's size does not equal the number of states.");
@@ -61,13 +66,17 @@ void Mdp<ValueType, RewardModelType>::exportGEFXToStream(std::ostream &outStream
                  "  </meta>\n"
                  "  <graph defaultedgetype=\"directed\">\n"
                  "    <nodes>\n";
+
     // State nodes + intermediary action nodes
+    auto initStates = this->getInitialStates();
+    auto targetStates = this->getStateLabeling().getStates("target");
     for (auto state = 0; state < this->getNumberOfStates(); state++) {
-        outStream << "      <node id=\"" << state << "\" label=\"" << state << "\"><!-- State node -->\n"
+        std::string label = initStates[state] ? std::to_string(state) + "_INIT" : std::to_string(state);
+        outStream << "      <node id=\"" << state << "\" label=\"" << label << "\"><!-- State node -->\n"
                      "        <viz:color r=\"" << colors[state][0] << "\" g=\"" << colors[state][1] << "\" b=\"" << colors[state][2] << "\" a=\"1\" />\n"
                      "      </node>\n";
         for (auto action = 0; action < this->getTransitionMatrix().getRowGroupSize(state); action++) {
-            outStream << "<node id=\"" << state << "a" << action << "\" label=\"\"> <!-- Intermediate node -->\n"
+            outStream << "      <node id=\"" << state << "a" << action << "\" label=\"\"> <!-- Intermediate node -->\n"
                          "        <viz:color r=\"0\" g=\"0\" b=\"0\" a=\"1\" /> <!-- Black and small-->\n"
                          "        <viz:size value=\"3\"/>\n"
                          "      </node>\n";
