@@ -48,6 +48,21 @@ uint64_t Mdp<ValueType, RewardModelType>::encodeColor(uint64_t r, uint64_t g, ui
 }
 
 template<class ValueType, typename RewardModelType>
+storm::storage::BitVector Mdp<ValueType, RewardModelType>::identifyAlmostSureSelfLoops() {
+    auto result = storm::storage::BitVector(this->getNumberOfChoices(), false);
+    auto rowIndices = this->getTransitionMatrix().getRowGroupIndices();
+    for (auto state = 0; state < this->getNumberOfStates(); state++) {
+        for (auto action = 0; action < this->getTransitionMatrix().getRowGroupSize(state); action++) {
+            auto row = this->getTransitionMatrix().getRow(state, action);
+            if (row.getNumberOfEntries() == 1 && row.begin()->getColumn() == state) {
+                result.set(rowIndices[state] + action);
+            }
+        }
+    }
+    return result;
+}
+
+template<class ValueType, typename RewardModelType>
 void Mdp<ValueType, RewardModelType>::exportGEFXToStream(std::ostream &outStream,
                                                          std::vector<std::vector<uint64_t>> colors) {
     STORM_LOG_ASSERT(this->getNumberOfStates() == colors.size(), "The color vector's size does not equal the number of states.");
@@ -62,24 +77,43 @@ void Mdp<ValueType, RewardModelType>::exportGEFXToStream(std::ostream &outStream
                  "      version=\"1.3\">\n"
                  "  <meta>\n"
                  "    <creator>Spook</creator>\n"
-                 "    <description>Belief MDP Visualization</description>\n"
+                 "    <description>MDP Visualization</description>\n"
                  "  </meta>\n"
                  "  <graph defaultedgetype=\"directed\">\n"
+                 "      <attributes class=\"node\">\n"
+                 "          <attribute id=\"0\" title=\"init\" type=\"boolean\"/>\n"
+                 "          <attribute id=\"1\" title=\"target\" type=\"boolean\"/>\n"
+                 "          <attribute id=\"2\" title=\"colored\" type=\"boolean\"/>\n"
+                 "          <attribute id=\"3\" title=\"colorCode\" type=\"integer\"/>\n"
+                 "      </attributes>\n"
                  "    <nodes>\n";
 
     // State nodes + intermediary action nodes
     auto initStates = this->getInitialStates();
     auto targetStates = this->getStateLabeling().getStates("target");
+    auto almostSureSelfLoops = identifyAlmostSureSelfLoops();
     for (auto state = 0; state < this->getNumberOfStates(); state++) {
-        std::string label = initStates[state] ? std::to_string(state) + "_INIT" : std::to_string(state);
+        std::string label = initStates[state] ? std::to_string(state) + "_INIT" : (targetStates[state] ? std::to_string(state) + "_TARGET" : std::to_string(state));
+        std::string initInfo = initStates[state] ? "true" : "false";
+        std::string targetInfo = targetStates[state] ? "true" : "false";
+        uint64_t colorCode = encodeColor(colors[state][0], colors[state][1], colors[state][2]);
+        std::string coloredInfo = (colorCode!= 0 && colorCode != 255255255) ? "true" : "false";
         outStream << "      <node id=\"" << state << "\" label=\"" << label << "\"><!-- State node -->\n"
+                     "          <attvalues>\n"
+                     "              <attvalue for=\"0\" value=\"" << initInfo << "\"/>\n"
+                     "              <attvalue for=\"1\" value=\"" << targetInfo << "\"/>\n"
+                     "              <attvalue for=\"2\" value=\"" << coloredInfo << "\"/>\n"
+                     "              <attvalue for=\"3\" value=\"" << colorCode << "\"/>\n"
+                     "        </attvalues>"
                      "        <viz:color r=\"" << colors[state][0] << "\" g=\"" << colors[state][1] << "\" b=\"" << colors[state][2] << "\" a=\"1\" />\n"
                      "      </node>\n";
         for (auto action = 0; action < this->getTransitionMatrix().getRowGroupSize(state); action++) {
-            outStream << "      <node id=\"" << state << "a" << action << "\" label=\"\"> <!-- Intermediate node -->\n"
-                         "        <viz:color r=\"0\" g=\"0\" b=\"0\" a=\"1\" /> <!-- Black and small-->\n"
-                         "        <viz:size value=\"3\"/>\n"
-                         "      </node>\n";
+            if (!almostSureSelfLoops[this->getTransitionMatrix().getRowGroupIndices()[state] + action]) {
+                outStream << "      <node id=\"" << state << "a" << action << "\" label=\"\"> <!-- Intermediate node -->\n"
+                                                                              "        <viz:color r=\"0\" g=\"0\" b=\"0\" a=\"1\" /> <!-- Black and small-->\n"
+                                                                              "        <viz:size value=\"3\"/>\n"
+                                                                              "      </node>\n";
+            }
         }
     }
 
@@ -88,7 +122,6 @@ void Mdp<ValueType, RewardModelType>::exportGEFXToStream(std::ostream &outStream
     // Transitions
     for (auto state = 0; state < this->getNumberOfStates(); state++) {
         for (auto action = 0; action < this->getTransitionMatrix().getRowGroupSize(state); action++) {
-            auto row = this->getTransitionMatrix().getRow(state, action);
             uint64_t rowIndex = this->getTransitionMatrix().getRowGroupIndices()[state] + action;
             std::string actionLabel;
             if (this->hasChoiceLabeling() && this->getChoiceLabeling().getLabelsOfChoice(rowIndex).size() == 1) {
@@ -96,12 +129,19 @@ void Mdp<ValueType, RewardModelType>::exportGEFXToStream(std::ostream &outStream
             } else {
                 actionLabel = std::to_string(action);
             }
-            std::string intermediate = std::to_string(state) + "a" + std::to_string(action);
-            outStream << "      <edge source=\"" << state << "\" target=\"" << intermediate << "\" label=\"" << actionLabel << "\"> <!-- State to Intermediate -->\n";
-            outStream << "          <viz:color r=\"0\" g=\"0\" b=\"0\"/>\n";
-            outStream << "      </edge>\n";
-            for (auto entry : row) {
-                outStream << "      <edge source=\"" << intermediate << "\" target=\"" << entry.getColumn() << "\" label=\"" << entry.getValue() << "\"> <!-- Intermediate to Successor State -->\n";
+            if (!almostSureSelfLoops[rowIndex]){
+                auto row = this->getTransitionMatrix().getRow(state, action);
+                std::string intermediate = std::to_string(state) + "a" + std::to_string(action);
+                outStream << "      <edge source=\"" << state << "\" target=\"" << intermediate << "\" label=\"" << actionLabel << "\"> <!-- State to Intermediate -->\n";
+                outStream << "          <viz:color r=\"0\" g=\"0\" b=\"0\"/>\n";
+                outStream << "      </edge>\n";
+                for (auto entry : row) {
+                    outStream << "      <edge source=\"" << intermediate << "\" target=\"" << entry.getColumn() << "\" label=\"" << entry.getValue() << "\"> <!-- Intermediate to Successor State -->\n";
+                    outStream << "          <viz:color r=\"0\" g=\"0\" b=\"0\"/>\n";
+                    outStream << "      </edge>\n";
+                }
+            } else {
+                outStream << "      <edge source=\"" << state << "\" target=\"" << state << "\" label=\"" << actionLabel << "\"> <!-- Almost-Sure Self Loop -->\n";
                 outStream << "          <viz:color r=\"0\" g=\"0\" b=\"0\"/>\n";
                 outStream << "      </edge>\n";
             }
