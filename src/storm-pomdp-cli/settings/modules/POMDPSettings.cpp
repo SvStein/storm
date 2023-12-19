@@ -25,6 +25,7 @@ const std::string memoryPatternOption = "memorypattern";
 std::vector<std::string> memoryPatterns = {"trivial", "fixedcounter", "selectivecounter", "ring", "fixedring", "settablebits", "full"};
 const std::string checkFullyObservableOption = "check-fully-observable";
 const std::string isQualitativeOption = "qualitative-analysis";
+const std::string compareBMDPsOption = "compare-bmdps";
 
 POMDPSettings::POMDPSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, noCanonicOption, false,
@@ -64,6 +65,10 @@ POMDPSettings::POMDPSettings() : ModuleSettings(moduleName) {
     this->addOption(
         storm::settings::OptionBuilder(moduleName, checkFullyObservableOption, false, "Performs standard model checking on the underlying MDP").build());
     this->addOption(storm::settings::OptionBuilder(moduleName, isQualitativeOption, false, "Sets the option qualitative analysis").build());
+    this->addOption(
+            storm::settings::OptionBuilder(moduleName, compareBMDPsOption, false, "Create GEXF files to compare regular and bound-unfolded BMDPs")
+                    .addArgument(storm::settings::ArgumentBuilder::createStringArgument("filename", "The name of the files to which to write the GEXF models.").build())
+                    .build());
 }
 
 bool POMDPSettings::isNoCanonicSet() const {
@@ -134,6 +139,14 @@ storm::storage::PomdpMemoryPattern POMDPSettings::getMemoryPattern() const {
         return storm::storage::PomdpMemoryPattern::Full;
     }
     STORM_LOG_THROW(false, storm::exceptions::InvalidArgumentException, "The name of the memory pattern is unknown.");
+}
+
+bool POMDPSettings::isCompareBMDPsSet() const {
+    return this->getOption(compareBMDPsOption).getHasOptionBeenSet();
+}
+
+std::string POMDPSettings::getBMDPCompareFilename() const {
+    return this->getOption(compareBMDPsOption).getArgumentByName("filename").getValueAsString();
 }
 
 void POMDPSettings::finalize() {}

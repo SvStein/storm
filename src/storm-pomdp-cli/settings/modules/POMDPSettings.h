@@ -42,6 +42,10 @@ class POMDPSettings : public ModuleSettings {
 
     // The name of the module.
     static const std::string moduleName;
+
+    bool isCompareBMDPsSet() const;
+
+    std::string getBMDPCompareFilename() const;
 };
 
 }  // namespace modules

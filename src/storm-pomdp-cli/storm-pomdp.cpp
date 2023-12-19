@@ -410,12 +410,14 @@ void createGEFXOutputs(typename storm::pomdp::modelchecker::BeliefExplorationPom
     determineOgColors(ogUnderColors);
     determineUnfColors<ValueType, DdType, BeliefType>(ogUnderColors, unfUnderColors, ogCheckingResult, unfCheckingResult, unfoldingInfo, true);
 
+    std::string filename = storm::settings::getModule<storm::settings::modules::POMDPSettings>().getBMDPCompareFilename();
+
     std::ofstream stream;
-    storm::utility::openFile("ogUnder.gexf", stream);
+    storm::utility::openFile(filename + "_ogUnder.gexf", stream);
     ogCheckingResult.beliefMdpUnder->exportGEFXToStream(stream, ogUnderColors);
     storm::utility::closeFile(stream);
     stream.clear();
-    storm::utility::openFile("unfUnder.gexf", stream);
+    storm::utility::openFile(filename + "_unfUnder.gexf", stream);
     unfCheckingResult.beliefMdpUnder->exportGEFXToStream(stream, unfUnderColors);
     storm::utility::closeFile(stream);
     stream.clear();
@@ -615,7 +617,7 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
     }
 
     // TODO set/unset flag to create gefx comparison outputs here
-    bool compareBMDPs = true;
+    bool compareBMDPs = storm::settings::getModule<storm::settings::modules::POMDPSettings>().isCompareBMDPsSet();
     if (formula && !compareBMDPs) {
         if (formula->asOperatorFormula().getSubformula().isBoundedUntilFormula()) {
             auto unfolder = storm::transformer::BoundUnfolder<ValueType>();
