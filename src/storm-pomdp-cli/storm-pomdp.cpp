@@ -439,11 +439,11 @@ void createGEFXOutputs(typename storm::pomdp::modelchecker::BeliefExplorationPom
     determineOgColors(ogOverColors);
     determineUnfColors<ValueType, DdType, BeliefType>(ogOverColors, unfOverColors, ogCheckingResult, unfCheckingResult, unfoldingInfo, false);
 
-    storm::utility::openFile("ogOver.gexf", stream);
+    storm::utility::openFile(filename + "_ogOver.gexf", stream);
     ogCheckingResult.beliefMdpOver->exportGEFXToStream(stream, ogOverColors);
     storm::utility::closeFile(stream);
     stream.clear();
-    storm::utility::openFile("unfOver.gexf", stream);
+    storm::utility::openFile(filename + "_unfOver.gexf", stream);
     unfCheckingResult.beliefMdpOver->exportGEFXToStream(stream, unfOverColors);
     storm::utility::closeFile(stream);
 }
