@@ -318,6 +318,36 @@ void determineOgColors(std::vector<std::vector<uint64_t>> &stateColors) {
 }
 
 template<typename ValueType, storm::dd::DdType DdType, typename BeliefType> // TODO idk is this the right thing to put here?
+void determineNumberOfEpochs(std::vector<uint64_t> &numbersOfEpochs, std::vector<uint64_t> &maxSingleStateEpochNumbers, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo,  bool underApprox) {
+    // TODO Determine which values make sense for 0 and 1 later
+    numbersOfEpochs[0] = 0;
+    numbersOfEpochs[1] = 0;
+    for (auto unfBMDPState = 2; unfBMDPState < numbersOfEpochs.size(); unfBMDPState++) {
+        boost::container::flat_map<uint64_t , BeliefType> unfBeliefUnfStateDistribution = (underApprox ? unfCheckingResult.beliefManagerUnder->getBelief(unfCheckingResult.mdpStateToBeliefIdMapUnder[unfBMDPState]) : unfCheckingResult.beliefManagerOver->getBelief(unfCheckingResult.mdpStateToBeliefIdMapOver[unfBMDPState]));
+        std::set<ValueType> totalEpochs;
+        std::map<uint64_t, std::set<ValueType>> epochsPerState;
+        for (auto it = unfBeliefUnfStateDistribution.begin(); it != unfBeliefUnfStateDistribution.end(); it++) {
+            // find out what og state the unfState refers to if we ignore its epoch
+            auto ogStateEpochPair = unfoldingInfo.newStateToStateEpoch[it->first];
+            auto ogState = ogStateEpochPair.first;
+            auto epoch = ogStateEpochPair.second;
+            // sort it into the belief distribution over og states
+            totalEpochs.insert(epoch);
+            if (epochsPerState.find(ogState) == epochsPerState.end()) {
+                epochsPerState[ogState] = std::set<ValueType>();
+            }
+            epochsPerState[ogState].insert(epoch);
+        }
+        numbersOfEpochs[unfBMDPState] = totalEpochs.size();
+        auto setSizeCmp = [] (const std::pair<uint64_t, std::set<ValueType>> &v1, const std::pair<uint64_t, std::set<ValueType>> &v2) -> bool {
+            return v1.second.size() < v2.second.size();
+        };
+        maxSingleStateEpochNumbers[unfBMDPState] = std::max_element(epochsPerState.begin(), epochsPerState.end(), setSizeCmp).second.size();
+    }
+}
+
+
+template<typename ValueType, storm::dd::DdType DdType, typename BeliefType> // TODO idk is this the right thing to put here?
 void determineUnfColors(std::vector<std::vector<uint64_t>> &ogStateColors, std::vector<std::vector<uint64_t>> &unfStateColors, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo,  bool underApprox) {
     // this is one possible implementation of deciding when to color an unfolded state the same as a non-unfolded state, others may be added / implemented as well
     // here: unfBelief ~= ogBelief iff for all s in supp(ogBelief): ogBelief(s) = unfBelief(s)
@@ -395,7 +425,7 @@ void createGEFXOutputs(typename storm::pomdp::modelchecker::BeliefExplorationPom
     // TODO for now, this assumes both under and overapproximation have been applied
     // underapprox part
     uint64_t ogUnderStateNumber = ogCheckingResult.beliefMdpUnder->getNumberOfStates();
-    std::vector<std::vector<uint64_t>> ogUnderColors = std::vector<std::vector<uint64_t>>();
+    auto ogUnderColors = std::vector<std::vector<uint64_t>>();
     ogUnderColors.reserve(ogUnderStateNumber);
     for (auto i = 0; i < ogUnderStateNumber; i++){
         ogUnderColors.push_back(std::vector<uint64_t>(3));
@@ -616,7 +646,6 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
         std::cout << uniqueAnalysis.analyse() << '\n';
     }
 
-    // TODO set/unset flag to create gefx comparison outputs here
     bool compareBMDPs = storm::settings::getModule<storm::settings::modules::POMDPSettings>().isCompareBMDPsSet();
     if (formula && !compareBMDPs) {
         if (formula->asOperatorFormula().getSubformula().isBoundedUntilFormula()) {
