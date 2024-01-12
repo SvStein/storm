@@ -20,13 +20,13 @@ namespace storm {
 
             GEXFExporter() = default;
 
-            void createGEFXOutputs(typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo, std::string filename);
+            void createGEXFOutputs(typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo, std::string filename);
         private:
             uint64_t encodeColor(uint64_t r, uint64_t g, uint64_t b);
 
             std::string attributeTypeToString(GEXFAttributeType attributeType);
 
-            void exportGEFXToStream(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp, std::ostream& outStream, std::vector<std::vector<uint64_t>> colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> additionalAttributes = std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>());
+            void exportGEXFToStream(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp, std::ostream& outStream, std::vector<std::vector<uint64_t>> colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> additionalAttributes = std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>());
 
             void determineOgColors(std::vector<std::vector<uint64_t>> &stateColors);
 

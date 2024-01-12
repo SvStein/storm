@@ -550,7 +550,7 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
 
         auto exporter = storm::exporter::GEXFExporter<ValueType, ValueType>();
         std::string filename = storm::settings::getModule<storm::settings::modules::POMDPSettings>().getBMDPCompareFilename();
-        exporter.createGEFXOutputs(performedResult.second, unfperformedResult.second, unfoldedStuff, filename);
+        exporter.createGEXFOutputs(performedResult.second, unfperformedResult.second, unfoldedStuff, filename);
     } else {
         STORM_LOG_WARN("Nothing to be done. Did you forget to specify a formula?");
     }

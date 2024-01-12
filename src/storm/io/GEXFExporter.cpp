@@ -32,7 +32,7 @@ namespace storm {
         }
 
         template<class ValueType, typename BeliefType>
-        void GEXFExporter<ValueType, BeliefType>::exportGEFXToStream(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp, std::ostream &outStream, std::vector<std::vector<uint64_t>> colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> additionalAttributes) {
+        void GEXFExporter<ValueType, BeliefType>::exportGEXFToStream(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp, std::ostream &outStream, std::vector<std::vector<uint64_t>> colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> additionalAttributes) {
             // TODO make colors optional
             STORM_LOG_ASSERT(mdp->getNumberOfStates() == colors.size(), "The color vector's size does not equal the number of states.");
             // TODO maybe some basic format check if the strings given as values for the attributes adhere to the given attribute type
@@ -283,7 +283,7 @@ namespace storm {
         }
 
         template<class ValueType, typename BeliefType>
-        void GEXFExporter<ValueType, BeliefType>::createGEFXOutputs(typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo, std::string filename) {
+        void GEXFExporter<ValueType, BeliefType>::createGEXFOutputs(typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo, std::string filename) {
             // TODO for now, this assumes both under and overapproximation have been applied
             // underapprox part
             uint64_t ogUnderStateNumber = ogCheckingResult.beliefMdpUnder->getNumberOfStates();
@@ -311,11 +311,11 @@ namespace storm {
 
             std::ofstream stream;
             storm::utility::openFile(filename + "_ogUnder.gexf", stream);
-            exportGEFXToStream(ogCheckingResult.beliefMdpUnder, stream, ogUnderColors);
+            exportGEXFToStream(ogCheckingResult.beliefMdpUnder, stream, ogUnderColors);
             storm::utility::closeFile(stream);
             stream.clear();
             storm::utility::openFile(filename + "_unfUnder.gexf", stream);
-            exportGEFXToStream(unfCheckingResult.beliefMdpUnder, stream, unfUnderColors, unfUnderExtraAttr);
+            exportGEXFToStream(unfCheckingResult.beliefMdpUnder, stream, unfUnderColors, unfUnderExtraAttr);
             storm::utility::closeFile(stream);
             stream.clear();
 
@@ -344,11 +344,11 @@ namespace storm {
             unfOverExtraAttr["maxSingleStateEpochNumber"] = std::make_pair(GEXFAttributeType::GEXF_integer, unfOverMaxSingleStateEpochNumbers);
 
             storm::utility::openFile(filename + "_ogOver.gexf", stream);
-            exportGEFXToStream(ogCheckingResult.beliefMdpOver, stream, ogOverColors);
+            exportGEXFToStream(ogCheckingResult.beliefMdpOver, stream, ogOverColors);
             storm::utility::closeFile(stream);
             stream.clear();
             storm::utility::openFile(filename + "_unfOver.gexf", stream);
-            exportGEFXToStream(unfCheckingResult.beliefMdpOver, stream, unfOverColors, unfOverExtraAttr);
+            exportGEXFToStream(unfCheckingResult.beliefMdpOver, stream, unfOverColors, unfOverExtraAttr);
             storm::utility::closeFile(stream);
         }
 
