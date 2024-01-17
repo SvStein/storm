@@ -7,8 +7,6 @@
 
 #include "storm/models/sparse/Mdp.h"
 #include "storm/models/sparse/Pomdp.h"
-#include "storm-pomdp/modelchecker/BeliefExplorationPomdpModelChecker.h"
-#include "storm-pomdp/transformer/BoundUnfolder.h"
 
 namespace storm {
     namespace exporter {
@@ -20,19 +18,12 @@ namespace storm {
 
             GEXFExporter() = default;
 
-            void createGEXFOutputs(typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo, std::string filename);
-        private:
+        protected:
             uint64_t encodeColor(uint64_t r, uint64_t g, uint64_t b);
 
             std::string attributeTypeToString(GEXFAttributeType attributeType);
 
             void exportGEXFToStream(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp, std::ostream& outStream, std::vector<std::vector<uint64_t>> colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> additionalAttributes = std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>());
-
-            void determineOgColors(std::vector<std::vector<uint64_t>> &stateColors);
-
-            void determineNumberOfEpochs(std::vector<std::string> &numbersOfEpochs, std::vector<std::string> &maxSingleStateEpochNumbers, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo,  bool underApprox);
-
-            void determineUnfColors(std::vector<std::vector<uint64_t>> &ogStateColors, std::vector<std::vector<uint64_t>> &unfStateColors, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo,  bool underApprox);
 
         };
 
