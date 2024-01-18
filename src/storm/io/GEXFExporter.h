@@ -2,11 +2,9 @@
 // Created by spook on 11.01.24.
 //
 
-#ifndef STORM_GEXFEXPORTER_H
-#define STORM_GEXFEXPORTER_H
+#pragma once
 
 #include "storm/models/sparse/Mdp.h"
-#include "storm/models/sparse/Pomdp.h"
 
 namespace storm {
     namespace exporter {
@@ -30,4 +28,3 @@ namespace storm {
     } // storm
 } // exporter
 
-#endif //STORM_GEXFEXPORTER_H

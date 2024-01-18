@@ -152,6 +152,21 @@ void BeliefMDPExporter<ValueType, BeliefType>::determineUnfColors(std::vector<st
     }
 }
 
+template<typename ValueType, typename BeliefType>
+void BeliefMDPExporter<ValueType, BeliefType>::outputSummary(std::vector<std::string> numEpochs, std::vector<std::string> maxSingleStateEpochs, bool under, std::string filename) {
+    auto stringIntComp = [] (const std::string &v1, const std::string &v2) -> bool {
+        return std::stoi(v1) < std::stoi(v2);
+    };
+    std::string epochMax = *(std::max_element(numEpochs.begin(), numEpochs.end(), stringIntComp));
+    std::string maxSingleStateEpochsMax = *(std::max_element(maxSingleStateEpochs.begin(), maxSingleStateEpochs.end(), stringIntComp));
+    std::string fileNameWithoutPath = filename.substr(filename.find_last_of('/'));
+    std::ofstream stream;
+    storm::utility::openFile(summaryFile, stream, true);
+    std::string lineToWrite = epochMax + "\t" + maxSingleStateEpochsMax + "\t" + fileNameWithoutPath + (under? "_under" : "_over") + "\n";
+    stream << lineToWrite;
+    storm::utility::closeFile(stream);
+}
+
 template<class ValueType, typename BeliefType>
 void BeliefMDPExporter<ValueType, BeliefType>::createGEXFOutputs(typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &ogCheckingResult, typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType>::Result &unfCheckingResult, typename storm::transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingInfo, std::string filename) {
     // TODO for now, this assumes both under and overapproximation have been applied
@@ -175,19 +190,21 @@ void BeliefMDPExporter<ValueType, BeliefType>::createGEXFOutputs(typename storm:
     auto unfUnderNumberOfEpochs = std::vector<std::string>(unfUnderStateNumber);
     auto unfUnderMaxSingleStateEpochNumbers = std::vector<std::string>(unfUnderStateNumber);
     determineNumberOfEpochs(unfUnderNumberOfEpochs, unfUnderMaxSingleStateEpochNumbers, unfCheckingResult, unfoldingInfo, true);
-    auto unfUnderExtraAttr = std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>();
-    unfUnderExtraAttr["numberOfEpochs"] = std::make_pair(GEXFAttributeType::GEXF_integer, unfUnderNumberOfEpochs);
-    unfUnderExtraAttr["maxSingleStateEpochNumber"] = std::make_pair(GEXFAttributeType::GEXF_integer, unfUnderMaxSingleStateEpochNumbers);
+    auto unfUnderExtraAttr = std::map<std::string, std::pair<typename GEXFExporter<ValueType, BeliefType>::GEXFAttributeType, std::vector<std::string>>>();
+    unfUnderExtraAttr["numberOfEpochs"] = std::make_pair(GEXFExporter<ValueType, BeliefType>::GEXFAttributeType::GEXF_integer, unfUnderNumberOfEpochs);
+    unfUnderExtraAttr["maxSingleStateEpochNumber"] = std::make_pair(GEXFExporter<ValueType, BeliefType>::GEXFAttributeType::GEXF_integer, unfUnderMaxSingleStateEpochNumbers);
 
     std::ofstream stream;
     storm::utility::openFile(filename + "_ogUnder.gexf", stream);
-    exportGEXFToStream(ogCheckingResult.beliefMdpUnder, stream, ogUnderColors);
+    this->exportGEXFToStream(ogCheckingResult.beliefMdpUnder, stream, ogUnderColors);
     storm::utility::closeFile(stream);
     stream.clear();
     storm::utility::openFile(filename + "_unfUnder.gexf", stream);
-    exportGEXFToStream(unfCheckingResult.beliefMdpUnder, stream, unfUnderColors, unfUnderExtraAttr);
+    this->exportGEXFToStream(unfCheckingResult.beliefMdpUnder, stream, unfUnderColors, unfUnderExtraAttr);
     storm::utility::closeFile(stream);
     stream.clear();
+
+    outputSummary(unfUnderNumberOfEpochs, unfUnderMaxSingleStateEpochNumbers, true, filename);
 
     // Overapprox part
     uint64_t ogOverStateNumber = ogCheckingResult.beliefMdpOver->getNumberOfStates();
@@ -209,17 +226,19 @@ void BeliefMDPExporter<ValueType, BeliefType>::createGEXFOutputs(typename storm:
     auto unfOverNumberOfEpochs = std::vector<std::string>(unfOverStateNumber);
     auto unfOverMaxSingleStateEpochNumbers = std::vector<std::string>(unfOverStateNumber);
     determineNumberOfEpochs(unfOverNumberOfEpochs, unfOverMaxSingleStateEpochNumbers, unfCheckingResult, unfoldingInfo, false);
-    auto unfOverExtraAttr = std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>();
-    unfOverExtraAttr["numberOfEpochs"] = std::make_pair(GEXFAttributeType::GEXF_integer, unfOverNumberOfEpochs);
-    unfOverExtraAttr["maxSingleStateEpochNumber"] = std::make_pair(GEXFAttributeType::GEXF_integer, unfOverMaxSingleStateEpochNumbers);
+    auto unfOverExtraAttr = std::map<std::string, std::pair<typename GEXFExporter<ValueType, BeliefType>::GEXFAttributeType, std::vector<std::string>>>();
+    unfOverExtraAttr["numberOfEpochs"] = std::make_pair(GEXFExporter<ValueType, BeliefType>::GEXFAttributeType::GEXF_integer, unfOverNumberOfEpochs);
+    unfOverExtraAttr["maxSingleStateEpochNumber"] = std::make_pair(GEXFExporter<ValueType, BeliefType>::GEXFAttributeType::GEXF_integer, unfOverMaxSingleStateEpochNumbers);
 
     storm::utility::openFile(filename + "_ogOver.gexf", stream);
-    exportGEXFToStream(ogCheckingResult.beliefMdpOver, stream, ogOverColors);
+    this->exportGEXFToStream(ogCheckingResult.beliefMdpOver, stream, ogOverColors);
     storm::utility::closeFile(stream);
     stream.clear();
     storm::utility::openFile(filename + "_unfOver.gexf", stream);
-    exportGEXFToStream(unfCheckingResult.beliefMdpOver, stream, unfOverColors, unfOverExtraAttr);
+    this->exportGEXFToStream(unfCheckingResult.beliefMdpOver, stream, unfOverColors, unfOverExtraAttr);
     storm::utility::closeFile(stream);
+
+    outputSummary(unfOverNumberOfEpochs, unfOverMaxSingleStateEpochNumbers, false, filename);
 }
 
 template class BeliefMDPExporter<double, double>;

@@ -34,7 +34,7 @@
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/Stopwatch.h"
 
-#include "storm/io/GEXFExporter.h"
+#include "storm-pomdp/io/BeliefMDPExporter.h"
 
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
@@ -548,7 +548,7 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
             STORM_PRINT_AND_LOG("Time for POMDP analysis: " << sw << "s.\n");
         }
 
-        auto exporter = storm::exporter::GEXFExporter<ValueType, ValueType>();
+        auto exporter = storm::exporter::BeliefMDPExporter<ValueType, ValueType>();
         std::string filename = storm::settings::getModule<storm::settings::modules::POMDPSettings>().getBMDPCompareFilename();
         exporter.createGEXFOutputs(performedResult.second, unfperformedResult.second, unfoldedStuff, filename);
     } else {

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "storm-pomdp/builder/BeliefMdpExplorer.h"
 #include "storm-pomdp/modelchecker/BeliefExplorationPomdpModelCheckerOptions.h"
 #include "storm-pomdp/storage/BeliefManager.h"
