@@ -31,8 +31,8 @@ namespace storm {
 
         template<class ValueType, typename BeliefType>
         void GEXFExporter<ValueType, BeliefType>::exportGEXFToStream(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp, std::ostream &outStream, std::vector<std::vector<uint64_t>> colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> additionalAttributes) {
-            // TODO make colors optional
-            STORM_LOG_ASSERT(mdp->getNumberOfStates() == colors.size(), "The color vector's size does not equal the number of states.");
+            bool useColors = mdp->getNumberOfStates() == colors.size();
+
             // TODO maybe some basic format check if the strings given as values for the attributes adhere to the given attribute type
     
             // Preamble
@@ -69,7 +69,7 @@ namespace storm {
                 std::string label = initStates[state] ? std::to_string(state) + "_INIT" : (targetStates[state] ? std::to_string(state) + "_TARGET" : std::to_string(state));
                 std::string initInfo = initStates[state] ? "true" : "false";
                 std::string targetInfo = targetStates[state] ? "true" : "false";
-                uint64_t colorCode = encodeColor(colors[state][0], colors[state][1], colors[state][2]);
+                uint64_t colorCode = useColors? encodeColor(colors[state][0], colors[state][1], colors[state][2]) : 255255255;
                 std::string coloredInfo = (colorCode!= 0 && colorCode != 255255255) ? "true" : "false";
                 outStream << "      <node id=\"" << state << "\" label=\"" << label << "\"><!-- State node -->\n"
                              "        <attvalues>\n"
@@ -82,9 +82,16 @@ namespace storm {
                     outStream << "          <attvalue for=\"" << attrID << "\" value=\"" << attribute.second.second[state] << "\"/>\n";
                     attrID++;
                 }
-                outStream << "        </attvalues>"
-                             "        <viz:color r=\"" << colors[state][0] << "\" g=\"" << colors[state][1] << "\" b=\"" << colors[state][2] << "\" a=\"1\" />\n"
-                             "      </node>\n";
+                if (useColors) {
+                    outStream << "        </attvalues>"
+                                 "        <viz:color r=\"" << colors[state][0] << "\" g=\"" << colors[state][1] << "\" b=\"" << colors[state][2] << "\" a=\"1\" />\n"
+                                 "      </node>\n";
+                } else {
+                    outStream << "        </attvalues>"
+                                 "        <viz:color r=\"255\" g=\"255\" b=\"255\" a=\"1\" />\n"
+                                 "      </node>\n";
+                }
+
                 for (auto action = 0; action < mdp->getTransitionMatrix().getRowGroupSize(state); action++) {
                     if (!almostSureSelfLoops[mdp->getTransitionMatrix().getRowGroupIndices()[state] + action]) {
                         outStream << "      <node id=\"" << state << "a" << action << "\" label=\"\"> <!-- Intermediate node -->\n"

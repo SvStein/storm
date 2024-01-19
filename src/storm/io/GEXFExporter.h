@@ -21,7 +21,7 @@ namespace storm {
 
             std::string attributeTypeToString(GEXFAttributeType attributeType);
 
-            void exportGEXFToStream(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp, std::ostream& outStream, std::vector<std::vector<uint64_t>> colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> additionalAttributes = std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>());
+            void exportGEXFToStream(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp, std::ostream& outStream, std::vector<std::vector<uint64_t>> colors = std::vector<std::vector<uint64_t>>(), std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> additionalAttributes = std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>());
 
         };
 
