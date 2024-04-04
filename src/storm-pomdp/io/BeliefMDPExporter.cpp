@@ -23,6 +23,10 @@ void BeliefMDPExporter<ValueType, BeliefType>::determineOgColors(std::vector<std
     colorBehaviorOnInterval[5] = {'u', 'f', 'd'};
 
     auto numberOfColors = stateColors.size();
+    if (numberOfColors > 1530) {
+        determineOgColorsExtended(stateColors);
+        return;
+    }
     uint64_t colorDistance = 1530 / numberOfColors;
     for (auto i = 0; i < numberOfColors; i++) {
         uint64_t value = i * colorDistance; // translate each color to a value within our spectrum of 1530 colors
@@ -45,6 +49,58 @@ void BeliefMDPExporter<ValueType, BeliefType>::determineOgColors(std::vector<std
             }
         }
     }
+}
+
+template<class ValueType, typename BeliefType>
+void BeliefMDPExporter<ValueType, BeliefType>::determineOgColorsExtended(std::vector<std::vector<uint64_t>> &stateColors) {
+    auto numberOfColors = stateColors.size();
+    // We wanna divide the color "cube" with:
+    // x "cuts" orthogonal to r axis,
+    // y "cuts" orthogonal to g axis,
+    // z "cuts" orthogonal to b axis,
+    // and take the corner points of the resulting sections (minus black and white bc they are reserved) as our different color values
+    // we check value triples with x >= y >= z >= x-1
+    // with x,y,z close to each other for a relatively even distribution across the color space
+    // but allowing that y and z may be 1 smaller than x to provide intermediate sizes for the color space
+    if (256 * 256 * 256 - 2 < numberOfColors) {
+        STORM_LOG_ERROR("Color Space too small for required number of colors");
+    }
+    uint64_t x = 1;
+    uint64_t y;
+    uint64_t z;
+    for (; x < 255; x++) {
+        if ((x + 2) * (x + 1) * (x + 1) - 2 >= numberOfColors) {
+            y = x - 1;
+            z = x - 1;
+            break;
+        }
+        if ((x + 2) * (x + 2) * (x + 1) - 2 >= numberOfColors) {
+            y = x;
+            z = x - 1;
+            break;
+        }
+        if ((x + 2) * (x + 2) * (x + 2) - 2 >= numberOfColors) {
+            y = x;
+            z = x;
+            break;
+        }
+    }
+    for (uint64_t state = 0; state < numberOfColors; state++) {
+        auto rgb = adaptedEuclid(state + 1, x, y); // +1 so we skip black
+        stateColors[state][0] = std::get<0>(rgb) * (255/(x + 1));
+        stateColors[state][1] = std::get<1>(rgb) * (255/(y + 1));
+        stateColors[state][2] = std::get<2>(rgb) * (255/(z + 1));
+    }
+}
+
+template<typename ValueType, typename BeliefType>
+std::tuple<uint64_t, uint64_t, uint64_t> BeliefMDPExporter<ValueType, BeliefType>::adaptedEuclid(uint64_t i, uint64_t x, uint64_t y) {
+    uint64_t b = i / ((x + 2) * (y + 2));
+    i = i - b * (x + 2) * (y + 2);
+    uint64_t g = i / (x + 2);
+    i = i - g * (x + 2);
+    uint64_t r = i;
+    return std::make_tuple(r, g, b);
 }
 
 template<class ValueType, typename BeliefType>
