@@ -39,8 +39,6 @@
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
 
-#include "storm-pars/transformer/ParametricTransformer.h"
-
 #include <typeinfo>
 
 namespace storm {
@@ -389,12 +387,6 @@ bool performTransformation(std::shared_ptr<storm::models::sparse::Pomdp<ValueTyp
             STORM_PRINT_AND_LOG(" done.\n");
             pmc->printModelInformationToStream(std::cout);
         }
-        if (pmc->hasRewardModel() && transformSettings.isConstantRewardsSet()) {
-            STORM_PRINT_AND_LOG("Ensuring constant rewards...");
-            pmc = storm::transformer::makeRewardsConstant(*(pmc->template as<storm::models::sparse::Dtmc<storm::RationalFunction>>()));
-            STORM_PRINT_AND_LOG(" done.\n");
-            pmc->printModelInformationToStream(std::cout);
-        }
         STORM_PRINT_AND_LOG("Exporting pMC...");
         storm::analysis::ConstraintCollector<storm::RationalFunction> constraints(*pmc);
         auto const& parameterSet = constraints.getVariables();
@@ -470,13 +462,13 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
         sw.restart();
         if (performTransformation<ValueType, DdType>(pomdp, *formula)) {
             sw.stop();
-            STORM_PRINT_AND_LOG("Time for POMDP transformation(s): " << sw << "s.\n");
+            STORM_PRINT_AND_LOG("Time for POMDP transformation(s): " << sw << ".\n");
         }
 
         sw.restart();
         if (performAnalysis<ValueType, DdType, ValueType>(pomdp, formulaInfo, *formula)) {
             sw.stop();
-            STORM_PRINT_AND_LOG("Time for POMDP analysis: " << sw << "s.\n");
+            STORM_PRINT_AND_LOG("Time for POMDP analysis: " << sw << ".\n");
         }
     } else if (formula && compareBMDPs){
         STORM_LOG_ASSERT(formula->asOperatorFormula().getSubformula().isBoundedUntilFormula(), "Not bounded Until formula");
@@ -602,28 +594,7 @@ void processOptions() {
  */
 int main(const int argc, const char** argv) {
     // try {
-    storm::utility::setUp();
-    storm::cli::printHeader("Storm-pomdp", argc, argv);
-    storm::settings::initializePomdpSettings("Storm-POMDP", "storm-pomdp");
-
-    bool optionsCorrect = storm::cli::parseOptions(argc, argv);
-    if (!optionsCorrect) {
-        return -1;
-    }
-    storm::utility::Stopwatch totalTimer(true);
-    storm::cli::setUrgentOptions();
-
-    // Invoke storm-pomdp with obtained settings
-    storm::pomdp::cli::processOptions();
-
-    totalTimer.stop();
-    if (storm::settings::getModule<storm::settings::modules::ResourceSettings>().isPrintTimeAndMemorySet()) {
-        storm::cli::printTimeAndMemoryStatistics(totalTimer.getTimeInMilliseconds());
-    }
-
-    // All operations have now been performed, so we clean up everything and terminate.
-    storm::utility::cleanUp();
-    return 0;
+    return storm::cli::process("Storm-POMDP", "storm-pomdp", storm::settings::initializePomdpSettings, storm::pomdp::cli::processOptions, argc, argv);
     // } catch (storm::exceptions::BaseException const &exception) {
     //    STORM_LOG_ERROR("An exception caused Storm-pomdp to terminate. The message of the exception is: " << exception.what());
     //    return 1;

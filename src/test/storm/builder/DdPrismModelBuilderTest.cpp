@@ -1,6 +1,7 @@
 #include "storm-config.h"
 #include "storm-parsers/parser/PrismParser.h"
 #include "storm/builder/DdPrismModelBuilder.h"
+#include "storm/exceptions/WrongFormatException.h"
 #include "storm/models/symbolic/Ctmc.h"
 #include "storm/models/symbolic/Dtmc.h"
 #include "storm/models/symbolic/Mdp.h"
@@ -209,6 +210,16 @@ TEST(DdPrismModelBuilderTest_Sylvan, Mdp) {
     EXPECT_EQ(37ul, mdp->getNumberOfStates());
     EXPECT_EQ(59ul, mdp->getNumberOfTransitions());
     EXPECT_EQ(59ul, mdp->getNumberOfChoices());
+
+    modelDescription = storm::parser::PrismParser::parse(STORM_TEST_RESOURCES_DIR "/mdp/sync.nm");
+    program = modelDescription.preprocess().asPrismProgram();
+    model = storm::builder::DdPrismModelBuilder<storm::dd::DdType::Sylvan>().build(program);
+    EXPECT_TRUE(model->getType() == storm::models::ModelType::Mdp);
+    mdp = model->as<storm::models::symbolic::Mdp<storm::dd::DdType::Sylvan>>();
+
+    EXPECT_EQ(5ul, mdp->getNumberOfStates());
+    EXPECT_EQ(24ul, mdp->getNumberOfTransitions());
+    EXPECT_EQ(12ul, mdp->getNumberOfChoices());
 }
 
 TEST(DdPrismModelBuilderTest_Cudd, Mdp) {
@@ -273,6 +284,16 @@ TEST(DdPrismModelBuilderTest_Cudd, Mdp) {
     EXPECT_EQ(37ul, mdp->getNumberOfStates());
     EXPECT_EQ(59ul, mdp->getNumberOfTransitions());
     EXPECT_EQ(59ul, mdp->getNumberOfChoices());
+
+    modelDescription = storm::parser::PrismParser::parse(STORM_TEST_RESOURCES_DIR "/mdp/sync.nm");
+    program = modelDescription.preprocess().asPrismProgram();
+    model = storm::builder::DdPrismModelBuilder<storm::dd::DdType::CUDD>().build(program);
+    EXPECT_TRUE(model->getType() == storm::models::ModelType::Mdp);
+    mdp = model->as<storm::models::symbolic::Mdp<storm::dd::DdType::CUDD>>();
+
+    EXPECT_EQ(5ul, mdp->getNumberOfStates());
+    EXPECT_EQ(24ul, mdp->getNumberOfTransitions());
+    EXPECT_EQ(12ul, mdp->getNumberOfChoices());
 }
 
 TEST(DdPrismModelBuilderTest_Sylvan, Composition) {

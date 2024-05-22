@@ -6,7 +6,7 @@
 #include "storm/utility/logging.h"
 
 #include "storm/storage/jani/Property.h"
-#include "utility/Stopwatch.h"
+#include "storm/utility/Stopwatch.h"
 
 namespace storm {
 class Environment;

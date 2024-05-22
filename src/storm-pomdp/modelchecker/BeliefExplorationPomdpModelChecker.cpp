@@ -19,8 +19,8 @@
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/storage/Scheduler.h"
 #include "storm/utility/SignalHandler.h"
+#include "storm/utility/graph.h"
 #include "storm/utility/macros.h"
-#include "utility/graph.h"
 
 namespace storm {
 namespace pomdp {
@@ -223,7 +223,7 @@ BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPTyp
 
 template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
 void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::printStatisticsToStream(std::ostream& stream) const {
-    stream << "##### Grid Approximation Statistics ######\n";
+    stream << "##### POMDP Approximation Statistics ######\n";
     stream << "# Input model: \n";
     pomdp().printModelInformationToStream(stream);
     stream << "# Max. Number of states with same observation: " << pomdp().getMaxNrStatesWithSameObservation() << '\n';
@@ -380,7 +380,6 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                 underApproxHeuristicPar.sizeThreshold = pomdp().getNumberOfStates() * pomdp().getMaxNrStatesWithSameObservation();
                 STORM_PRINT_AND_LOG("Heuristically selected an under-approximation MDP size threshold of " << underApproxHeuristicPar.sizeThreshold << ".\n")
             }
-            underApproxHeuristicPar.sizeThreshold = pomdp().getNumberOfStates() * pomdp().getMaxNrStatesWithSameObservation();
         }
 
         if (options.useClipping && rewardModelName.has_value()) {
@@ -1298,7 +1297,7 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
     underApproximation->finishExploration();
     statistics.underApproximationBuildTime.stop();
     printUpdateStopwatch.stop();
-    STORM_PRINT_AND_LOG("Finished exploring Underapproximation MDP.\nStart analysis...\n");
+    STORM_PRINT_AND_LOG("Finished exploring under-approximation MDP.\nStart analysis...\n");
     unfoldingStatus = Status::ModelExplorationFinished;
     statistics.underApproximationCheckTime.start();
     underApproximation->computeValuesOfExploredMdp(env, min ? storm::solver::OptimizationDirection::Minimize : storm::solver::OptimizationDirection::Maximize);

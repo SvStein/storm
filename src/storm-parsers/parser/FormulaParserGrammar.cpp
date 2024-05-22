@@ -16,6 +16,10 @@ FormulaParserGrammar::FormulaParserGrammar(std::shared_ptr<storm::expressions::E
     initialize();
 }
 
+qi::symbols<char, storm::expressions::Expression> const& FormulaParserGrammar::getIdentifiers() const {
+    return identifiers_;
+}
+
 void FormulaParserGrammar::initialize() {
     // Register all variables so we can parse them in the expressions.
     for (auto variableTypePair : *constManager) {
@@ -125,6 +129,9 @@ void FormulaParserGrammar::initialize() {
         (-qi::lit("rew") >>
          rewardModelName(storm::logic::FormulaContext::Reward))[qi::_val = phoenix::bind(&FormulaParserGrammar::createTimeBoundReference, phoenix::ref(*this),
                                                                                          storm::logic::TimeBoundType::Reward, qi::_1)] |
+        (qi::lit("rew") >>
+         -rewardModelName(storm::logic::FormulaContext::Reward))[qi::_val = phoenix::bind(&FormulaParserGrammar::createTimeBoundReference, phoenix::ref(*this),
+                                                                                          storm::logic::TimeBoundType::Reward, qi::_1)] |
         (qi::lit("steps"))[qi::_val = phoenix::bind(&FormulaParserGrammar::createTimeBoundReference, phoenix::ref(*this), storm::logic::TimeBoundType::Steps,
                                                     boost::none)] |
         (-qi::lit("time"))[qi::_val = phoenix::bind(&FormulaParserGrammar::createTimeBoundReference, phoenix::ref(*this), storm::logic::TimeBoundType::Time,
@@ -132,8 +139,8 @@ void FormulaParserGrammar::initialize() {
     timeBoundReference.name("time bound reference");
     timeBound = ((timeBoundReference >> qi::lit("[")) > expressionParser > qi::lit(",") > expressionParser >
                  qi::lit("]"))[qi::_val = phoenix::bind(&FormulaParserGrammar::createTimeBoundFromInterval, phoenix::ref(*this), qi::_2, qi::_3, qi::_1)] |
-                (timeBoundReference >> (qi::lit("<=")[qi::_a = true, qi::_b = false] | qi::lit("<")[qi::_a = true, qi::_b = true] |
-                                        qi::lit(">=")[qi::_a = false, qi::_b = false] | qi::lit(">")[qi::_a = false, qi::_b = true]) >>
+                (timeBoundReference >> (qi::lit("<=")[(qi::_a = true, qi::_b = false)] | qi::lit("<")[(qi::_a = true, qi::_b = true)] |
+                                        qi::lit(">=")[(qi::_a = false, qi::_b = false)] | qi::lit(">")[(qi::_a = false, qi::_b = true)]) >>
                  expressionParser)[qi::_val = phoenix::bind(&FormulaParserGrammar::createTimeBoundFromSingleBound, phoenix::ref(*this), qi::_2, qi::_a, qi::_b,
                                                             qi::_1)] |
                 (timeBoundReference >> qi::lit("=") >>
@@ -356,8 +363,7 @@ bool FormulaParserGrammar::areConstantDefinitionsAllowed() const {
 std::shared_ptr<storm::logic::TimeBoundReference> FormulaParserGrammar::createTimeBoundReference(storm::logic::TimeBoundType const& type,
                                                                                                  boost::optional<std::string> const& rewardModelName) const {
     if (type == storm::logic::TimeBoundType::Reward) {
-        STORM_LOG_THROW(rewardModelName, storm::exceptions::WrongFormatException, "Reward bound does not specify a reward model name.");
-        return std::make_shared<storm::logic::TimeBoundReference>(rewardModelName.get());
+        return std::make_shared<storm::logic::TimeBoundReference>(rewardModelName);
     } else {
         return std::make_shared<storm::logic::TimeBoundReference>(type);
     }
@@ -711,7 +717,7 @@ storm::jani::Property FormulaParserGrammar::createPropertyWithDefaultFilterTypeA
 }
 
 storm::logic::PlayerCoalition FormulaParserGrammar::createPlayerCoalition(
-    std::vector<boost::variant<std::string, storm::storage::PlayerIndex>> const& playerIds) const {
+    std::vector<std::variant<std::string, storm::storage::PlayerIndex>> const& playerIds) const {
     return storm::logic::PlayerCoalition(playerIds);
 }
 

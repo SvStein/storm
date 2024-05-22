@@ -5,9 +5,6 @@
 
 #include "storm/models/sparse/StandardRewardModel.h"
 
-#include "storm/settings/SettingsManager.h"
-#include "storm/settings/modules/GeneralSettings.h"
-
 #include "storm/solver/LinearEquationSolver.h"
 #include "storm/solver/multiplier/Multiplier.h"
 
@@ -39,7 +36,7 @@ template<typename ValueType>
 bool SparseCtmcCslHelper::checkAndUpdateTransientProbabilityEpsilon(storm::Environment const& env, ValueType& epsilon,
                                                                     std::vector<ValueType> const& resultVector,
                                                                     storm::storage::BitVector const& relevantPositions) {
-    // Check if the check is necessary for the provided settings
+    // Check if the check is necessary for the provided environment
     if (!env.solver().isForceSoundness() || !env.solver().timeBounded().getRelativeTerminationCriterion()) {
         // No need to update epsilon
         return false;
@@ -311,7 +308,8 @@ std::vector<ValueType> SparseCtmcCslHelper::computeInstantaneousRewards(Environm
                                                                         std::vector<ValueType> const& exitRateVector, RewardModelType const& rewardModel,
                                                                         double timeBound) {
     // Only compute the result if the model has a state-based reward model.
-    STORM_LOG_THROW(!rewardModel.empty(), storm::exceptions::InvalidPropertyException, "Missing reward model for formula. Skipping formula.");
+    STORM_LOG_THROW(rewardModel.hasStateRewards(), storm::exceptions::InvalidPropertyException,
+                    "Computing instantaneous rewards for a reward model that does not define any state-rewards. The result is trivially 0.");
 
     uint_fast64_t numberOfStates = rateMatrix.getRowCount();
 

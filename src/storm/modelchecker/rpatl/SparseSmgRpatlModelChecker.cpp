@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/utility/FilteredRewardModel.h"
 #include "storm/utility/macros.h"
 
@@ -14,8 +15,6 @@
 #include "storm/logic/FragmentSpecification.h"
 
 #include "storm/models/sparse/StandardRewardModel.h"
-
-#include "storm/settings/modules/GeneralSettings.h"
 
 #include "storm/exceptions/InvalidPropertyException.h"
 #include "storm/exceptions/NotImplementedException.h"

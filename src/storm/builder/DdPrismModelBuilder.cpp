@@ -17,6 +17,8 @@
 #include "storm/utility/math.h"
 #include "storm/utility/prism.h"
 
+#include "storm/adapters/AddExpressionAdapter.h"
+
 #include "storm/storage/dd/Add.h"
 #include "storm/storage/dd/Bdd.h"
 #include "storm/storage/dd/DdManager.h"
@@ -909,11 +911,11 @@ storm::dd::Add<Type, ValueType> DdPrismModelBuilder<Type, ValueType>::encodeChoi
                                 << ".");
 
     std::map<storm::expressions::Variable, int_fast64_t> metaVariableNameToValueMap;
-    for (uint_fast64_t i = nondeterminismVariableOffset; i < nondeterminismVariableOffset + numberOfBinaryVariables; ++i) {
+    for (uint_fast64_t i = 0; i < numberOfBinaryVariables; ++i) {
         if (value & (1ull << (numberOfBinaryVariables - i - 1))) {
-            metaVariableNameToValueMap.emplace(generationInfo.nondeterminismMetaVariables[i], 1);
+            metaVariableNameToValueMap.emplace(generationInfo.nondeterminismMetaVariables[nondeterminismVariableOffset + i], 1);
         } else {
-            metaVariableNameToValueMap.emplace(generationInfo.nondeterminismMetaVariables[i], 0);
+            metaVariableNameToValueMap.emplace(generationInfo.nondeterminismMetaVariables[nondeterminismVariableOffset + i], 0);
         }
     }
 
