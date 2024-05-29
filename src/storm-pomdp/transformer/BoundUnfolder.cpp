@@ -11,6 +11,8 @@
 #include "storm-pomdp/analysis/FormulaInformation.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/logic/BoundedUntilFormula.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
+
 
 namespace storm {
 namespace transformer {

@@ -4,6 +4,7 @@
 
 #include "GEXFExporter.h"
 #include "storm/io/file.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
 
 namespace storm {
     namespace exporter {
@@ -54,7 +55,7 @@ namespace storm {
                          "      <attribute id=\"2\" title=\"colored\" type=\"boolean\"/>\n"
                          "      <attribute id=\"3\" title=\"colorCode\" type=\"integer\"/>\n";
             uint64_t attrID = 4;
-            for (auto attribute : additionalAttributes) {
+            for (const auto& attribute : additionalAttributes) {
                 STORM_LOG_ASSERT(mdp->getNumberOfStates() == attribute.second.second.size(), "Additional node attribute vector does not have the same number of values as there are states.");
                 outStream << "      <attribute id=\"" << attrID << "\" title=\"" << attribute.first << "\" type=\"" << attributeTypeToString(attribute.second.first) << "\"/>\n";
                 attrID++;

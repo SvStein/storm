@@ -1,6 +1,8 @@
 #include "BeliefMDPExporter.h"
 #include <boost/container/flat_map.hpp>
 #include "storm/io/file.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
+
 
 namespace storm{
 namespace exporter{
