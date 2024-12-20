@@ -31,6 +31,7 @@ class Smg : public NondeterministicModel<ValueType, RewardModelType> {
     Smg& operator=(Smg<ValueType, RewardModelType>&& other) = default;
 
     std::vector<storm::storage::PlayerIndex> const& getStatePlayerIndications() const;
+    std::map<std::string, storm::storage::PlayerIndex> const& getPlayerNameToIndexMap() const;
     storm::storage::PlayerIndex getPlayerOfState(uint64_t stateIndex) const;
     storm::storage::PlayerIndex getPlayerIndex(std::string const& playerName) const;
     storm::storage::BitVector computeStatesOfCoalition(storm::logic::PlayerCoalition const& coalition) const;
@@ -42,6 +43,7 @@ class Smg : public NondeterministicModel<ValueType, RewardModelType> {
     // A mapping of player names to player indices.
     std::map<std::string, storm::storage::PlayerIndex> playerNameToIndexMap;
 };
+
 
 }  // namespace sparse
 }  // namespace models

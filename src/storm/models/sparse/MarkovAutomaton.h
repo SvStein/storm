@@ -157,6 +157,8 @@ class MarkovAutomaton : public NondeterministicModel<ValueType, RewardModelType>
 
     virtual void printModelInformationToStream(std::ostream& out) const override;
 
+    storm::storage::SparseMatrix<ValueType> computeRateMatrix();
+
    private:
     /*!
      * Under the assumption that the Markovian choices of this Markov automaton are expressed in terms of

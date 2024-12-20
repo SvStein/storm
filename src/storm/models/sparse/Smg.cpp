@@ -36,6 +36,11 @@ std::vector<storm::storage::PlayerIndex> const& Smg<ValueType, RewardModelType>:
     return statePlayerIndications;
 }
 
+template<class ValueType, typename RewardModelType>
+std::map<std::string, storm::storage::PlayerIndex> const& Smg<ValueType, RewardModelType>::getPlayerNameToIndexMap() const {
+    return playerNameToIndexMap;
+}
+
 template<typename ValueType, typename RewardModelType>
 storm::storage::PlayerIndex Smg<ValueType, RewardModelType>::getPlayerOfState(uint64_t stateIndex) const {
     STORM_LOG_ASSERT(stateIndex < this->getNumberOfStates(), "Invalid state index: " << stateIndex << ".");

@@ -3,6 +3,7 @@
 
 #include "storm/models/sparse/NondeterministicModel.h"
 #include "storm/utility/OsDetection.h"
+#include "Smg.h"
 
 namespace storm {
 namespace models {
@@ -80,6 +81,8 @@ class StochasticTwoPlayerGame : public NondeterministicModel<ValueType, RewardMo
      * @return A vector containing the labels of each player 2 choice.
      */
     storm::models::sparse::ChoiceLabeling const& getPlayer2ChoiceLabeling() const;
+
+    std::shared_ptr<storm::models::sparse::Smg<ValueType>> toSmg();
 
    private:
     // A matrix that stores the player 1 choices. This matrix contains a row group for each player 1 node. Every

@@ -187,6 +187,21 @@ uint_least64_t NondeterministicModel<ValueType, RewardModelType>::getChoiceIndex
     return this->getNondeterministicChoiceIndices()[stateactPair.getState()] + stateactPair.getAction();
 }
 
+template<typename ValueType, typename RewardModelType>
+storm::storage::BitVector NondeterministicModel<ValueType, RewardModelType>::identifySingleSelfLoopActions() {
+    auto result = storm::storage::BitVector(this->getNumberOfChoices(), false);
+    auto rowIndices = this->getTransitionMatrix().getRowGroupIndices();
+    for (auto state = 0; state < this->getNumberOfStates(); state++) {
+        for (auto action = 0; action < this->getTransitionMatrix().getRowGroupSize(state); action++) {
+            auto row = this->getTransitionMatrix().getRow(state, action);
+            if (row.getNumberOfEntries() == 1 && row.begin()->getColumn() == state) {
+                result.set(rowIndices[state] + action);
+            }
+        }
+    }
+    return result;
+}
+
 template class NondeterministicModel<double>;
 
 #ifdef STORM_HAVE_CARL

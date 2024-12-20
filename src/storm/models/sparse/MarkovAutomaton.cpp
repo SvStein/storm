@@ -144,6 +144,20 @@ void MarkovAutomaton<ValueType, RewardModelType>::close() {
     }
 }
 
+template<class ValueType, typename RewardModelType>
+storage::SparseMatrix<ValueType> MarkovAutomaton<ValueType, RewardModelType>::computeRateMatrix() {
+    storm::storage::SparseMatrix<ValueType> result(this->getTransitionMatrix());
+    for (uint_fast64_t state = 0; state < this->getNumberOfStates(); ++state) {
+        uint_fast64_t row = this->getTransitionMatrix().getRowGroupIndices()[state];
+        if (this->markovianStates.get(state)) {
+            for (auto& transition : result.getRow(row)) {
+                transition.setValue(transition.getValue() * this->exitRates[state]);
+            }
+        }
+    }
+    return result;
+}
+
 template<typename ValueType, typename RewardModelType>
 void MarkovAutomaton<ValueType, RewardModelType>::turnRatesToProbabilities() {
     bool assertRates = (this->exitRates.size() == this->getNumberOfStates());
