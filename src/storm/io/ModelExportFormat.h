@@ -5,7 +5,7 @@
 namespace storm {
 namespace exporter {
 
-enum class ModelExportFormat { Dot, Drdd, Drn, Json };
+enum class ModelExportFormat { Dot, Drdd, Drn, Json, Gexf };
 
 /*!
  * @return The ModelExportFormat whose string representation matches the given input

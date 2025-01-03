@@ -10,6 +10,7 @@
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/storage/Scheduler.h"
 #include "storm/utility/macros.h"
+#include "../io/GEXFExporter.h"
 
 namespace storm {
 
@@ -42,6 +43,15 @@ void exportSparseModelAsDot(std::shared_ptr<storm::models::sparse::Model<ValueTy
     std::ofstream stream;
     storm::utility::openFile(filename, stream);
     model->writeDotToStream(stream, maxWidth);
+    storm::utility::closeFile(stream);
+}
+
+template<typename ValueType>
+void exportSparseModelAsGexf(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::string const& filename) {
+    std::ofstream stream;
+    storm::utility::openFile(filename, stream);
+    auto exporter = storm::exporter::GEXFExporter<ValueType>();
+    exporter.exportGEXFToStream(model, stream, std::nullopt, std::nullopt, true, false);
     storm::utility::closeFile(stream);
 }
 

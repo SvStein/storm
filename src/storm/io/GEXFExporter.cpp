@@ -15,6 +15,7 @@ namespace storm {
 
         template<typename ValueType>
         uint64_t GEXFExporter<ValueType>::encodeColor(uint64_t r, uint64_t g, uint64_t b) {
+            // Basically just the RGB values written one after the other
             STORM_LOG_ASSERT(r < 256 && g < 256 && b < 256, "Invalid color values. Need to be in [0, 255].");
             return (r*1000000 + g*1000 + b);
         }
@@ -32,6 +33,9 @@ namespace storm {
                 case GEXF_byte: return "byte";
                 case GEXF_date: return "date";
                 case GEXF_anyURI: return "anyURI";
+                default:
+                    STORM_LOG_ERROR("Well, that shouldn't happen. This is an enum and all cases should be covered here. What did you DO.");
+                    return ""; // just putting this here so the compiler stops yeeting warnings at me about reaching end of control in a non-void function
             }
         }
 
@@ -40,8 +44,13 @@ namespace storm {
                 std::shared_ptr<storm::models::sparse::Model<ValueType>> model, std::ostream &outStream,
                 std::optional<std::vector<std::vector<uint64_t>>> colorVec,
                 std::optional<std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>> additionalAttributesMap, bool allowDefaultColoring, bool convertRatesToProbs) {
+            // General info: some stuff in here may not be used when called from the export.h file (i.e. the "regular way")
+            // E.g. the bools may always have the same values and the colors and additional attributes are nullopt
+            // But I implemented this to be easily extendable and / or so that it can be called from elsewhere WITH those optional parameters
+            // so the output can be adjusted to include whichever information suits the needs of the user (bc that is exactly what I originally used this output for)
+            // Anyway, have fun with it
 
-            // for nonexisting colors + additionalAttributes, use empty vec/map bc then we don't have to deal with either constantly using .value() of the optionals but also
+            // For nonexistent colors + additionalAttributes, use empty vec/map bc then we don't have to deal with either constantly using .value() of the optionals but also
             // don't have to have eg colors given to be able to give addAttr as we would if we gave the params default values
             auto colors = colorVec? colorVec.value() : std::vector<std::vector<uint64_t>>();
             std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> additionalAttributes = additionalAttributesMap? additionalAttributesMap.value() : std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>();
@@ -69,7 +78,7 @@ namespace storm {
                     exportNonDetGEXFToStream(model->template as<storm::models::sparse::NondeterministicModel<ValueType>>(), outStream, colors, additionalAttributes, model->getTransitionMatrix());
                     break;
                 case models::ModelType::Mdp:
-                    prepMdp(model->template as<storm::models::sparse::Mdp<ValueType>>(), colors, additionalAttributes, allowDefaultColoring);
+                    prepMdp(model->template as<storm::models::sparse::Mdp<ValueType>>(), colors, allowDefaultColoring);
                     exportNonDetGEXFToStream(model->template as<storm::models::sparse::NondeterministicModel<ValueType>>(), outStream, colors, additionalAttributes, model->getTransitionMatrix());
                     break;
                 case models::ModelType::MarkovAutomaton:
@@ -82,14 +91,16 @@ namespace storm {
                     }
                     break;
                 case models::ModelType::S2pg:
-                    // TODO special treatment for this one needed, where do i even start
+                    // ok so the problem with s2pg is that I wanted to write a converter to smg but the class seems incomplete so that it is not clear how basic attributes like numberOfStates are to be understood
+                    // so idk. do with that what you will. I will keep this case here though in case this gets resolved.
+                    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "GEXF export not supported for this model type: " << model->getType());
                     break;
                 case models::ModelType::Smg:
                     prepSmg(model->template as<storm::models::sparse::Smg<ValueType>>(), colors, additionalAttributes, allowDefaultColoring);
                     exportNonDetGEXFToStream(model->template as<storm::models::sparse::NondeterministicModel<ValueType>>(), outStream, colors, additionalAttributes, model->getTransitionMatrix());
                     break;
                 case models::ModelType::Dtmc:
-                    prepDtmc(model->template as<storm::models::sparse::Dtmc<ValueType>>(), colors, additionalAttributes, allowDefaultColoring);
+                    prepDtmc(model->template as<storm::models::sparse::Dtmc<ValueType>>(), colors, allowDefaultColoring);
                     exportDetGEXFToStream(model->template as<storm::models::sparse::DeterministicModel<ValueType>>(), outStream, colors, additionalAttributes, model->getTransitionMatrix());
                     break;
                 case models::ModelType::Ctmc:
@@ -101,7 +112,7 @@ namespace storm {
                     }
                     break;
                 default:
-                    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "GEXF export not supported for this model type"); // for possible future model types
+                    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "GEXF export not supported for this model type: " << model->getType()); // for possible future model types
             }
         }
 
@@ -164,7 +175,7 @@ namespace storm {
             if (!additionalAttributes.contains("Observation")) {
                 auto observations = std::vector<std::string>(pomdp->getNumberOfStates());
                 for (uint64_t state = 0; state < pomdp->getNumberOfStates(); state++) {
-                    observations[state] = pomdp->getObservation(state);
+                    observations[state] = std::to_string(pomdp->getObservation(state));
                 }
                 additionalAttributes["Observation"] = std::make_pair(GEXFAttributeType::GEXF_integer, std::move(observations));
             } else {
@@ -174,9 +185,7 @@ namespace storm {
 
         template<typename ValueType>
         void GEXFExporter<ValueType>::prepMdp(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp,
-                                              std::vector<std::vector<uint64_t>> &colors,
-                                              std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> &additionalAttributes,
-                                              bool allowDefaultColoring) {
+                                              std::vector<std::vector<uint64_t>> &colors, bool allowDefaultColoring) {
             // This doesn't do much but still putting it in its own function so every model type has a prep function and is thus easily expandable
             if (colors.empty() && allowDefaultColoring) {
                 STORM_LOG_INFO("Applying default coloring.");
@@ -186,9 +195,7 @@ namespace storm {
 
         template<typename ValueType>
         void GEXFExporter<ValueType>::prepDtmc(std::shared_ptr<storm::models::sparse::Dtmc<ValueType>> dtmc,
-                                               std::vector<std::vector<uint64_t>> &colors,
-                                               std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>> &additionalAttributes,
-                                               bool allowDefaultColoring) {
+                                               std::vector<std::vector<uint64_t>> &colors, bool allowDefaultColoring) {
             // This doesn't do much but still putting it in its own function so every model type has a prep function and is thus easily expandable
             if (colors.empty() && allowDefaultColoring) {
                 STORM_LOG_INFO("Applying default coloring.");
@@ -337,11 +344,10 @@ namespace storm {
                          "  </meta>\n"
                          "  <graph defaultedgetype=\"directed\">\n"
                          "    <attributes class=\"node\">\n"
-                         "      <attribute id=\"0\" title=\"init\" type=\"boolean\"/>\n"
-                         "      <attribute id=\"1\" title=\"target\" type=\"boolean\"/>\n"
-                         "      <attribute id=\"2\" title=\"colored\" type=\"boolean\"/>\n"
-                         "      <attribute id=\"3\" title=\"colorCode\" type=\"integer\"/>\n";
-            uint64_t attrID = 4;
+                         "      <attribute id=\"0\" title=\"Init\" type=\"boolean\"/>\n"
+                         "      <attribute id=\"1\" title=\"Colored\" type=\"boolean\"/>\n"
+                         "      <attribute id=\"2\" title=\"ColorCode\" type=\"integer\"/>\n";
+            uint64_t attrID = 3;
             for (const auto& attribute : additionalAttributes) {
                 STORM_LOG_ASSERT(model->getNumberOfStates() == attribute.second.second.size(), "Additional node attribute vector does not have the same number of values as there are states.");
                 outStream << "      <attribute id=\"" << attrID << "\" title=\"" << attribute.first << "\" type=\"" << attributeTypeToString(attribute.second.first) << "\"/>\n";
@@ -351,21 +357,18 @@ namespace storm {
                          "    <nodes>\n";
             // State nodes + intermediary action nodes
             auto initStates = model->getInitialStates();
-            auto targetStates = model->getStateLabeling().getStates("target");
             auto singleSelfLoopActions = model->identifySingleSelfLoopActions();
             for (uint_fast64_t state = 0; state < model->getNumberOfStates(); state++) {
-                std::string label = initStates[state] ? std::to_string(state) + "_INIT" : (targetStates[state] ? std::to_string(state) + "_TARGET" : std::to_string(state));
+                std::string label = initStates[state] ? std::to_string(state) + "_INIT" : std::to_string(state);
                 std::string initInfo = initStates[state] ? "true" : "false";
-                std::string targetInfo = targetStates[state] ? "true" : "false";
                 uint64_t colorCode = useColors? encodeColor(colors[state][0], colors[state][1], colors[state][2]) : 255255255;
                 std::string coloredInfo = (colorCode!= 0 && colorCode != 255255255) ? "true" : "false";
                 outStream << "      <node id=\"" << state << "\" label=\"" << label << "\"><!-- State node -->\n"
                              "        <attvalues>\n"
                              "          <attvalue for=\"0\" value=\"" << initInfo << "\"/>\n"
-                             "          <attvalue for=\"1\" value=\"" << targetInfo << "\"/>\n"
-                             "          <attvalue for=\"2\" value=\"" << coloredInfo << "\"/>\n"
-                             "          <attvalue for=\"3\" value=\"" << colorCode << "\"/>\n";
-                attrID = 4;
+                             "          <attvalue for=\"1\" value=\"" << coloredInfo << "\"/>\n"
+                             "          <attvalue for=\"2\" value=\"" << colorCode << "\"/>\n";
+                attrID = 3;
                 for (auto attribute : additionalAttributes) {
                     outStream << "          <attvalue for=\"" << attrID << "\" value=\"" << attribute.second.second[state] << "\"/>\n";
                     attrID++;
@@ -446,11 +449,10 @@ namespace storm {
                          "  </meta>\n"
                          "  <graph defaultedgetype=\"directed\">\n"
                          "    <attributes class=\"node\">\n"
-                         "      <attribute id=\"0\" title=\"init\" type=\"boolean\"/>\n"
-                         "      <attribute id=\"1\" title=\"target\" type=\"boolean\"/>\n"
-                         "      <attribute id=\"2\" title=\"colored\" type=\"boolean\"/>\n"
-                         "      <attribute id=\"3\" title=\"colorCode\" type=\"integer\"/>\n";
-            uint64_t attrID = 4;
+                         "      <attribute id=\"0\" title=\"Init\" type=\"boolean\"/>\n"
+                         "      <attribute id=\"1\" title=\"Colored\" type=\"boolean\"/>\n"
+                         "      <attribute id=\"2\" title=\"ColorCode\" type=\"integer\"/>\n";
+            uint64_t attrID = 3;
             for (const auto& attribute : additionalAttributes) {
                 STORM_LOG_ASSERT(model->getNumberOfStates() == attribute.second.second.size(), "Additional node attribute vector does not have the same number of values as there are states.");
                 outStream << "      <attribute id=\"" << attrID << "\" title=\"" << attribute.first << "\" type=\"" << attributeTypeToString(attribute.second.first) << "\"/>\n";
@@ -458,22 +460,19 @@ namespace storm {
             }
             outStream << "    </attributes>\n"
                          "    <nodes>\n";
-            // State nodes + intermediary action nodes
+            // State nodes
             auto initStates = model->getInitialStates();
-            auto targetStates = model->getStateLabeling().getStates("target");
             for (uint_fast64_t state = 0; state < model->getNumberOfStates(); state++) {
-                std::string label = initStates[state] ? std::to_string(state) + "_INIT" : (targetStates[state] ? std::to_string(state) + "_TARGET" : std::to_string(state));
+                std::string label = initStates[state] ? std::to_string(state) + "_INIT" : std::to_string(state);
                 std::string initInfo = initStates[state] ? "true" : "false";
-                std::string targetInfo = targetStates[state] ? "true" : "false";
                 uint64_t colorCode = useColors? encodeColor(colors[state][0], colors[state][1], colors[state][2]) : 255255255;
                 std::string coloredInfo = (colorCode!= 0 && colorCode != 255255255) ? "true" : "false";
                 outStream << "      <node id=\"" << state << "\" label=\"" << label << "\"><!-- State node -->\n"
                              "        <attvalues>\n"
                              "          <attvalue for=\"0\" value=\"" << initInfo << "\"/>\n"
-                             "          <attvalue for=\"1\" value=\"" << targetInfo << "\"/>\n"
-                             "          <attvalue for=\"2\" value=\"" << coloredInfo << "\"/>\n"
-                             "          <attvalue for=\"3\" value=\"" << colorCode << "\"/>\n";
-                attrID = 4;
+                             "          <attvalue for=\"1\" value=\"" << coloredInfo << "\"/>\n"
+                             "          <attvalue for=\"2\" value=\"" << colorCode << "\"/>\n";
+                attrID = 3;
                 for (auto attribute : additionalAttributes) {
                     outStream << "          <attvalue for=\"" << attrID << "\" value=\"" << attribute.second.second[state] << "\"/>\n";
                     attrID++;
@@ -511,7 +510,7 @@ namespace storm {
             auto colors = std::vector<std::vector<uint64_t>>();
             uint64_t numberOfObservations = pomdp->getNrObservations();
             auto obsColors = createBasicColoring(numberOfObservations);
-            if (colors.size() == numberOfObservations) { // if the number of colors could be provided
+            if (obsColors.size() == numberOfObservations) { // if the number of colors could be provided
                 for (uint64_t state = 0; state < pomdp->getNumberOfStates(); state++) {
                     colors.emplace_back(3);
                     auto obs = pomdp->getObservation(state);
@@ -649,6 +648,7 @@ namespace storm {
                     colors[state][2] = std::get<2>(rgb) * (255 / (z + 1));
                 }
             }
+            return colors;
         }
 
         template<typename ValueType>
@@ -669,5 +669,6 @@ namespace storm {
 
         template class GEXFExporter<double>;
         template class GEXFExporter<storm::RationalNumber>;
+        template class GEXFExporter<storm::RationalFunction>;
     } // storm
 } // exporter

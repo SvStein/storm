@@ -49,9 +49,11 @@ namespace storm {
 
             void prepPomdp(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, std::vector<std::vector<uint64_t>>& colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>& additionalAttributes, bool allowDefaultColoring);
 
-            void prepMdp(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp, std::vector<std::vector<uint64_t>>& colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>& additionalAttributes, bool allowDefaultColoring);
+            void prepMdp(std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp,
+                         std::vector<std::vector<uint64_t>> &colors, bool allowDefaultColoring);
 
-            void prepDtmc(std::shared_ptr<storm::models::sparse::Dtmc<ValueType>> dtmc, std::vector<std::vector<uint64_t>>& colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>& additionalAttributes, bool allowDefaultColoring);
+            void prepDtmc(std::shared_ptr<storm::models::sparse::Dtmc<ValueType>> dtmc,
+                          std::vector<std::vector<uint64_t>> &colors, bool allowDefaultColoring);
 
             void prepCtmc(std::shared_ptr<storm::models::sparse::Ctmc<ValueType>> ctmc, std::vector<std::vector<uint64_t>>& colors, std::map<std::string, std::pair<GEXFAttributeType, std::vector<std::string>>>& additionalAttributes, bool allowDefaultColoring, bool convertRatesToProbs);
 
