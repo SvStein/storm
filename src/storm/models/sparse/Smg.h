@@ -44,7 +44,6 @@ class Smg : public NondeterministicModel<ValueType, RewardModelType> {
     std::map<std::string, storm::storage::PlayerIndex> playerNameToIndexMap;
 };
 
-
 }  // namespace sparse
 }  // namespace models
 }  // namespace storm

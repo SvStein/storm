@@ -4,13 +4,13 @@
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/io/DDEncodingExporter.h"
 #include "storm/io/DirectEncodingExporter.h"
+#include "storm/io/GEXFExporter.h"
 #include "storm/io/file.h"
 #include "storm/modelchecker/results/CheckResult.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/storage/Scheduler.h"
 #include "storm/utility/macros.h"
-#include "../io/GEXFExporter.h"
 
 namespace storm {
 

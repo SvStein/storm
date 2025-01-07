@@ -60,12 +60,6 @@ storm::models::sparse::ChoiceLabeling const& StochasticTwoPlayerGame<ValueType, 
     return this->getChoiceLabeling();
 }
 
-template<class ValueType, typename RewardModelType>
-std::shared_ptr<storm::models::sparse::Smg<ValueType>> StochasticTwoPlayerGame<ValueType, RewardModelType>::toSmg() {
-
-    return std::shared_ptr<storm::models::sparse::Smg<ValueType>>();
-}
-
 template class StochasticTwoPlayerGame<double>;
 
 #ifdef STORM_HAVE_CARL
