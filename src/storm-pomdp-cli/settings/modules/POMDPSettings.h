@@ -23,6 +23,9 @@ class POMDPSettings : public ModuleSettings {
     bool isExportToParametricSet() const;
     std::string getExportToParametricFilename() const;
 
+    bool isJuliaExportSet() const;
+    std::string getJuliaExportFilename() const;
+
     bool isQualitativeReductionSet() const;
 
     bool isNoCanonicSet() const;

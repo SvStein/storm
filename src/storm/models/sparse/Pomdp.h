@@ -91,6 +91,8 @@ class Pomdp : public Mdp<ValueType, RewardModelType> {
 
     virtual bool isPartiallyObservable() const override;
 
+    void toJuliaOutput(std::ostream &outStream);
+
    protected:
     /*!
      * Return a string that is additonally added to the state information in the dot stream.

@@ -15,6 +15,7 @@ namespace modules {
 const std::string POMDPSettings::moduleName = "pomdp";
 const std::string noCanonicOption = "nocanonic";
 const std::string exportAsParametricModelOption = "parametric-drn";
+const std::string exportAsJl = "export-pomdpjl";
 const std::string beliefExplorationOption = "belief-exploration";
 std::vector<std::string> beliefExplorationModes = {"both", "discretize", "unfold"};
 const std::string qualitativeReductionOption = "qualitativereduction";
@@ -32,6 +33,10 @@ POMDPSettings::POMDPSettings() : ModuleSettings(moduleName) {
                         .build());
     this->addOption(
         storm::settings::OptionBuilder(moduleName, exportAsParametricModelOption, false, "Export the parametric file.")
+            .addArgument(storm::settings::ArgumentBuilder::createStringArgument("filename", "The name of the file to which to write the model.").build())
+            .build());
+    this->addOption(
+        storm::settings::OptionBuilder(moduleName, exportAsJl, false, "Export as Julia POMDP.")
             .addArgument(storm::settings::ArgumentBuilder::createStringArgument("filename", "The name of the file to which to write the model.").build())
             .build());
     this->addOption(storm::settings::OptionBuilder(moduleName, qualitativeReductionOption, false,
@@ -134,6 +139,14 @@ storm::storage::PomdpMemoryPattern POMDPSettings::getMemoryPattern() const {
         return storm::storage::PomdpMemoryPattern::Full;
     }
     STORM_LOG_THROW(false, storm::exceptions::InvalidArgumentException, "The name of the memory pattern is unknown.");
+}
+
+bool POMDPSettings::isJuliaExportSet() const {
+    return this->getOption(exportAsJl).getHasOptionBeenSet();
+}
+
+std::string POMDPSettings::getJuliaExportFilename() const {
+    return this->getOption(exportAsJl).getArgumentByName("filename").getValueAsString();
 }
 
 void POMDPSettings::finalize() {}
