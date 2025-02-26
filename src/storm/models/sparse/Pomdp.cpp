@@ -249,7 +249,7 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
                 outStream << "            end\n";
             }
         }
-        if (state == numberOfStates - 1){
+        if (state == numberOfStates - 1) {
             outStream << "        end\n";
         }
     }
