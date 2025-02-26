@@ -156,10 +156,11 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
     // Prep the action names (don't want to rely on action labels)
     // Actions are not necessarily labeled but states with the same observation always have the same action order
     // TODO maybe add the option to use action labels if existent
-    std::map<std::pair<uint_fast64_t, uint_fast64_t>, std::string> actionNameMapping = std::map<std::pair<uint_fast64_t, uint_fast64_t>, std::string>(); // state + action to action name
+    std::map<std::pair<uint_fast64_t, uint_fast64_t>, std::string> actionNameMapping =
+        std::map<std::pair<uint_fast64_t, uint_fast64_t>, std::string>();  // state + action to action name
     std::set<std::string> actionNames = std::set<std::string>();
     std::string actionNamesEnumeration;
-    for (uint_fast64_t state = 0; state < this->getNumberOfStates(); state++){
+    for (uint_fast64_t state = 0; state < this->getNumberOfStates(); state++) {
         auto obs = observations[state];
         for (uint_fast64_t action = 0; action < this->getTransitionMatrix().getRowGroupSize(state); action++) {
             std::string actionName = std::to_string(obs) + "_" + std::to_string(action);
@@ -168,7 +169,7 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
         }
     }
     bool first = true;
-    for (const auto& name : actionNames) {
+    for (const auto &name : actionNames) {
         if (first) {
             first = false;
             actionNamesEnumeration += "\"" + name + "\"";
@@ -190,41 +191,67 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
     outStream << "using QuickPOMDPs: QuickPOMDP\n"
                  "using POMDPTools: Deterministic, SparseCat\n\n"
                  "pomdp = QuickPOMDP(\n"
-                 "    states = range(0, length=" << std::to_string(this->getNumberOfStates()) << "),\n"
-                 "    actions = [" << actionNamesEnumeration << "],\n"
-                 "    observations = range(0, length=" << std::to_string(nrObservations) << "),\n\n";
+                 "    states = range(0, length="
+              << std::to_string(this->getNumberOfStates())
+              << "),\n"
+                 "    actions = ["
+              << actionNamesEnumeration
+              << "],\n"
+                 "    observations = range(0, length="
+              << std::to_string(nrObservations) << "),\n\n";
 
     // Transition function
     outStream << "    transition = function (s, a)\n";
-    for (uint_fast64_t state = 0; state < this->getNumberOfStates(); state++){
-        outStream << "        if s == " << std::to_string(state) << "\n";
-        for (uint_fast64_t action = 0; action < this->getTransitionMatrix().getRowGroupSize(state); action++) {
-                outStream << "            if a == " << actionNameMapping[{state, action}] << "\n";
-                if (this->getTransitionMatrix().getRow(state,action).getNumberOfEntries() == 1) {
-                    uint_fast64_t succ = this->getTransitionMatrix().getRow(state, action).begin()->getColumn();
-                    STORM_LOG_ASSERT(storm::utility::isOne(this->getTransitionMatrix().getRow(state, action).begin()->getValue()), "There is only one entry. Why is it not equal to one?");
-                    outStream << "                return Deterministic(" << std::to_string(succ) << ")\n";
-                } else {
-                    std::string succsVecString = "[";
-                    std::string probsVecString = "[";
-                    first = true;
-                    for (const auto& entry : this->getTransitionMatrix().getRow(state, action)) {
-                        if (first) {
-                            first = false;
-                            succsVecString += std::to_string(entry.getColumn());
-                            probsVecString += storm::utility::to_string(entry.getValue());
-                        } else {
-                            succsVecString += ", " + std::to_string(entry.getColumn());
-                            probsVecString += ", " + storm::utility::to_string(entry.getValue());
-                        }
-                    }
-                    succsVecString += "]";
-                    probsVecString += "]";
-                    outStream << "                return SparseCat(" << succsVecString << ", " << probsVecString << ")\n";
-                }
-                outStream << "            end\n";
+    uint_fast64_t numberOfStates = this->getNumberOfStates();
+    for (uint_fast64_t state = 0; state < numberOfStates; state++) {
+        if (state == 0) {
+            outStream << "        if s == " << std::to_string(state) << "\n";
+        } else if (state == numberOfStates - 1) {
+            outStream << "        else\n";
+        } else {
+            outStream << "        elseif s == " << std::to_string(state) << "\n";
         }
-        outStream << "        end\n";
+
+        uint_fast64_t rowGroupSize = this->getTransitionMatrix().getRowGroupSize(state);
+        for (uint_fast64_t action = 0; action < rowGroupSize; action++) {
+            if (action == 0) {
+                outStream << "            if a == \"" << actionNameMapping[{state, action}] << "\"\n";
+            } else if (action == rowGroupSize - 1) {
+                outStream << "            else\n";
+            } else {
+                outStream << "            elseif a == \"" << actionNameMapping[{state, action}] << "\"\n";
+            }
+
+            if (this->getTransitionMatrix().getRow(state, action).getNumberOfEntries() == 1) {
+                uint_fast64_t succ = this->getTransitionMatrix().getRow(state, action).begin()->getColumn();
+                STORM_LOG_ASSERT(storm::utility::isOne(this->getTransitionMatrix().getRow(state, action).begin()->getValue()),
+                                 "There is only one entry. Why is it not equal to one?");
+                outStream << "                return Deterministic(" << std::to_string(succ) << ")\n";
+            } else {
+                std::string succsVecString = "[";
+                std::string probsVecString = "[";
+                first = true;
+                for (const auto &entry : this->getTransitionMatrix().getRow(state, action)) {
+                    if (first) {
+                        first = false;
+                        succsVecString += std::to_string(entry.getColumn());
+                        probsVecString += storm::utility::to_string(entry.getValue());
+                    } else {
+                        succsVecString += ", " + std::to_string(entry.getColumn());
+                        probsVecString += ", " + storm::utility::to_string(entry.getValue());
+                    }
+                }
+                succsVecString += "]";
+                probsVecString += "]";
+                outStream << "                return SparseCat(" << succsVecString << ", " << probsVecString << ")\n";
+            }
+            if (action == rowGroupSize - 1) {
+                outStream << "            end\n";
+            }
+        }
+        if (state == numberOfStates - 1){
+            outStream << "        end\n";
+        }
     }
     outStream << "    end,\n\n";
 
@@ -242,21 +269,21 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
             }
         }
         obsStatesVecString += "]";
-        if (obs == 0) { // first obs
+        if (obs == 0) {  // first obs
             outStream << "        if sp in " << obsStatesVecString << "\n"
                       << "            return Deterministic(" << std::to_string(obs) << ")\n";
-        } else if (obs == nrObservations - 1) { // last obs
+        } else if (obs == nrObservations - 1) {  // last obs
             outStream << "        else\n"
                       << "            return Deterministic(" << std::to_string(obs) << ")\n"
                       << "        end\n"
-                      << "    end,";
-        } else { // all other obs
+                      << "    end,\n\n";
+        } else {  // all other obs
             outStream << "        elseif sp in " << obsStatesVecString << "\n"
                       << "            return Deterministic(" << std::to_string(obs) << ")\n";
         }
     }
 
-    // TODO reward
+    // Reward function
     STORM_LOG_ASSERT(this->hasUniqueRewardModel(), "This output only supports a single reward model :(");
     auto rewModel = this->getUniqueRewardModel();
 
@@ -272,16 +299,17 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
         for (uint_fast64_t state = 0; state < this->getNumberOfStates(); state++) {
             if (state == 0) {
                 outStream << "        if s == " << std::to_string(state) << "\n";
-            } else if (state == this->getNumberOfStates() -1) {
+            } else if (state == this->getNumberOfStates() - 1) {
                 outStream << "        else\n";
             } else {
                 outStream << "        elseif s == " << std::to_string(state) << "\n";
             }
             auto rowGroupIndices = this->getTransitionMatrix().getRowGroupIndices(state);
-            typename RewardModelType::ValueType stateRew = sRews? rewModel.getStateReward(state) : storm::utility::zero<typename RewardModelType::ValueType>();
+            typename RewardModelType::ValueType stateRew = sRews ? rewModel.getStateReward(state) : storm::utility::zero<typename RewardModelType::ValueType>();
             auto rowGroupSize = this->getTransitionMatrix().getRowGroupSize(state);
             for (uint_fast64_t action = 0; action < rowGroupSize; action++) {
-                typename RewardModelType::ValueType stateActionRew = saRews? rewModel.getStateActionReward(rowGroupIndices[action]) : storm::utility::zero<typename RewardModelType::ValueType>();
+                typename RewardModelType::ValueType stateActionRew =
+                    saRews ? rewModel.getStateActionReward(rowGroupIndices[action]) : storm::utility::zero<typename RewardModelType::ValueType>();
                 if (action == 0) {
                     auto actionString = "\"" + actionNameMapping[{state, action}] + "\"";
                     outStream << "            if a == " << actionString << "\n";
@@ -293,13 +321,13 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
                 }
 
                 auto transRews = std::map<uint_fast64_t, typename RewardModelType::ValueType>();
-                for (const auto& entry : rewModel.getTransitionRewardMatrix().getRow(state, action)) {
+                for (const auto &entry : rewModel.getTransitionRewardMatrix().getRow(state, action)) {
                     auto succState = entry.getColumn();
                     transRews[succState] = entry.getValue();
                 }
                 uint_fast64_t succNr = 0;
                 auto rowSize = this->getTransitionMatrix().getRow(state, action).getNumberOfEntries();
-                for (const auto& entry : this->getTransitionMatrix().getRow(state, action)) {
+                for (const auto &entry : this->getTransitionMatrix().getRow(state, action)) {
                     // we need this extra iteration through the transition matrix
                     // to account for transitions with transition reward zero but non-zero state or stateaction rewards,
                     // these would otherwise not get into the rewards map due to the sparse nature of the reward matrix
@@ -333,7 +361,7 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
                 if (state == 0) {
                     outStream << "        if s == " << std::to_string(state) << "\n"
                               << "            return Deterministic(" << storm::utility::to_string(rewModel.getStateReward(state)) << ")\n";
-                } else if (state == this->getNumberOfStates() -1) {
+                } else if (state == this->getNumberOfStates() - 1) {
                     outStream << "        else\n"
                               << "            return Deterministic(" << storm::utility::to_string(rewModel.getStateReward(state)) << ")\n"
                               << "        end\n";
@@ -341,14 +369,13 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
                     outStream << "        elseif s == " << std::to_string(state) << "\n"
                               << "            return Deterministic(" << storm::utility::to_string(rewModel.getStateReward(state)) << ")\n";
                 }
-
             }
         } else {
             // differentiate between states AND actions
             for (uint_fast64_t state = 0; state < this->getNumberOfStates(); state++) {
                 if (state == 0) {
                     outStream << "        if s == " << std::to_string(state) << "\n";
-                } else if (state == this->getNumberOfStates() -1) {
+                } else if (state == this->getNumberOfStates() - 1) {
                     outStream << "        else\n";
                 } else {
                     outStream << "        elseif s == " << std::to_string(state) << "\n";
@@ -357,7 +384,7 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
                 auto rowGroupSize = this->getTransitionMatrix().getRowGroupSize(state);
                 for (uint_fast64_t action = 0; action < rowGroupSize; action++) {
                     auto reward = storm::utility::zero<typename RewardModelType::ValueType>();
-                    if (sRews){
+                    if (sRews) {
                         reward += rewModel.getStateReward(state);
                     }
                     reward += rewModel.getStateActionReward(rowGroupIndices[action]);
@@ -379,7 +406,7 @@ void Pomdp<ValueType, RewardModelType>::toJuliaOutput(std::ostream &outStream) {
             outStream << "        end\n";
         }
     }
-    outStream << "    end,\n";
+    outStream << "    end,\n\n";
 
     // Initial State
     storm::storage::BitVector initStates = this->getInitialStates();

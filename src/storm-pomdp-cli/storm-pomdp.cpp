@@ -408,6 +408,14 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
         std::cout << uniqueAnalysis.analyse() << '\n';
     }
 
+    if (pomdpSettings.isJuliaExportSet()) {
+        STORM_PRINT_AND_LOG("Exporting to Julia POMDP.\n");
+        std::ofstream stream;
+        storm::io::openFile(pomdpSettings.getJuliaExportFilename(), stream);
+        pomdp->toJuliaOutput(stream);
+        storm::io::closeFile(stream);
+    }
+
     if (formula) {
         auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*pomdp, *formula);
         STORM_LOG_THROW(!formulaInfo.isUnsupported(), storm::exceptions::InvalidPropertyException,
